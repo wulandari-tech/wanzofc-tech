@@ -1,4 +1,6 @@
+// Import modul yang diperlukan
 const express = require('express');
+const axios = require('axios');
 const router = express.Router();
 const { cekKey, updateKeyExpiry, deactivateKey, reactivateKey } = require('../database/db'); 
 const { youtubePlay, youtubeMp4, youtubeMp3 } = require('../controllers/yt');
@@ -77,5 +79,67 @@ router.get('/motivasi', motivasi);
 
 // Tambahkan endpoint untuk Gemini AI
 router.get('/google-gemini', geminiAi);
+
+// Endpoint pencarian YouTube (baru)
+router.get('/yts', async (req, res) => {
+    const query = req.query.query;
+    const apikey = req.query.apikey;
+
+    // Validasi parameter
+    if (!apikey) {
+        return res.status(400).json({
+            status: 400,
+            message: 'Parameter apikey is required!'
+        });
+    }
+
+    if (!query) {
+        return res.status(400).json({
+            status: 400,
+            message: 'Parameter query is required!'
+        });
+    }
+
+    // Validasi API key
+    const valid = await cekKey(apikey);
+    if (!valid) {
+        return res.status(403).json({
+            status: 403,
+            message: `Invalid API key: ${apikey}`
+        });
+    }
+
+    try {
+        // Gunakan API YouTube Search (misal dengan YTSearch)
+        const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+            params: {
+                part: 'snippet',
+                q: query,
+                key: 'YOUR_YOUTUBE_API_KEY', // Ganti dengan YouTube API Key Anda
+                maxResults: 10
+            }
+        });
+
+        const results = response.data.items.map(item => ({
+            title: item.snippet.title,
+            description: item.snippet.description,
+            channelTitle: item.snippet.channelTitle,
+            videoId: item.id.videoId,
+            thumbnail: item.snippet.thumbnails.default.url
+        }));
+
+        res.status(200).json({
+            status: 200,
+            query,
+            results
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 500,
+            message: 'Error fetching data from YouTube API',
+            error: error.message
+        });
+    }
+});
 
 module.exports = router;
