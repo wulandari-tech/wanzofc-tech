@@ -1,6 +1,6 @@
-// Import modul yang diperlukan
 const express = require('express');
 const axios = require('axios');
+const crypto = require('crypto'); // Untuk encrypt dan decrypt
 const router = express.Router();
 const { cekKey, updateKeyExpiry, deactivateKey, reactivateKey } = require('../database/db'); 
 const { youtubePlay, youtubeMp4, youtubeMp3 } = require('../controllers/yt');
@@ -80,66 +80,97 @@ router.get('/motivasi', motivasi);
 // Tambahkan endpoint untuk Gemini AI
 router.get('/google-gemini', geminiAi);
 
-// Endpoint pencarian YouTube (baru)
-router.get('/yts', async (req, res) => {
-    const query = req.query.query;
-    const apikey = req.query.apikey;
+// Endpoint whoami
+router.get('/whoami', (req, res) => {
+    res.status(200).json({
+        status: 200,
+        message: 'Welcome to the API!',
+        author: 'Awanberlian',
+        github: 'https://github.com/awanbrayy',
+        telegram: '@wanzofc'
+    });
+});
 
-    // Validasi parameter
-    if (!apikey) {
+// Endpoint cuaca
+router.get('/cuaca', async (req, res) => {
+    const { kota } = req.query;
+    if (!kota) {
         return res.status(400).json({
             status: 400,
-            message: 'Parameter apikey is required!'
-        });
-    }
-
-    if (!query) {
-        return res.status(400).json({
-            status: 400,
-            message: 'Parameter query is required!'
-        });
-    }
-
-    // Validasi API key
-    const valid = await cekKey(apikey);
-    if (!valid) {
-        return res.status(403).json({
-            status: 403,
-            message: `Invalid API key: ${apikey}`
+            message: 'Parameter kota is required!'
         });
     }
 
     try {
-        // Gunakan API YouTube Search (misal dengan YTSearch)
-        const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+        const apiKey = 'YOUR_OPENWEATHER_API_KEY'; // Ganti dengan API Key OpenWeather
+        const response = await axios.get(`https://api.openweathermap.org/data/2.5/weather`, {
             params: {
-                part: 'snippet',
-                q: query,
-                key: 'AIzaSyCuV73IqmbO25dYuMIMDrmmIwVowNWEUns', // Ganti dengan YouTube API Key Anda
-                maxResults: 10
+                q: kota,
+                units: 'metric',
+                appid: apiKey
             }
         });
 
-        const results = response.data.items.map(item => ({
-            title: item.snippet.title,
-            description: item.snippet.description,
-            channelTitle: item.snippet.channelTitle,
-            videoId: item.id.videoId,
-            thumbnail: item.snippet.thumbnails.default.url
-        }));
-
+        const data = response.data;
         res.status(200).json({
             status: 200,
-            query,
-            results
+            kota: data.name,
+            suhu: `${data.main.temp}°C`,
+            cuaca: data.weather[0].description,
+            angin: `${data.wind.speed} m/s`
         });
     } catch (error) {
         res.status(500).json({
             status: 500,
-            message: 'Error fetching data from YouTube API',
+            message: 'Gagal mendapatkan data cuaca!',
             error: error.message
         });
     }
 });
 
+// Fungsi encrypt dan decrypt
+const ENCRYPTION_KEY = 'abcdefghijklmnop'.repeat(2); // Kunci 32 karakter
+const IV_LENGTH = 16; // Panjang IV
+
+function encrypt(text) {
+    const iv = crypto.randomBytes(IV_LENGTH);
+    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+    let encrypted = cipher.update(text);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
+}
+
+function decrypt(text) {
+    const [iv, encryptedText] = text.split(':');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), Buffer.from(iv, 'hex'));
+    let decrypted = decipher.update(Buffer.from(encryptedText, 'hex'));
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+}
+
+// Endpoint encrypt
+router.get('/encrypt', (req, res) => {
+    const { text } = req.query;
+    if (!text) {
+        return res.status(400).json({ status: 400, message: 'Parameter text is required!' });
+    }
+    const encrypted = encrypt(text);
+    res.status(200).json({ status: 200, encrypted });
+});
+
+// Endpoint decrypt
+router.get('/decrypt', (req, res) => {
+    const { text } = req.query;
+    if (!text) {
+        return res.status(400).json({ status: 400, message: 'Parameter text is required!' });
+    }
+    try {
+        const decrypted = decrypt(text);
+        res.status(200).json({ status: 200, decrypted });
+    } catch (error) {
+        res.status(500).json({ status: 500, message: 'Invalid encrypted text!' });
+    }
+});
+
+// Export router
 module.exports = router;
