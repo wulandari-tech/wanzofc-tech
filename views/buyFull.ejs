@@ -18,24 +18,26 @@
                             </tr>
                         </thead>
                         <tbody style="text-align: center !important;">
+                            <% apikeys.forEach(key => { %>
                             <tr>
-                                <td><%= apikey %></td>
-                                <td><%= expiry_date %></td>
+                                <td><%= key.apikey %></td>
+                                <td><%= key.expiry_date %></td>
                                 <td>
-                                    <% if (status === 'active') { %>
+                                    <% if (key.status === 'active') { %>
                                         <span style="color: green;">Active</span>
                                     <% } else { %>
                                         <span style="color: red;">Expired</span>
                                     <% } %>
                                 </td>
                                 <td>
-                                    <% if (status === 'active') { %>
-                                        <button class="button button-secondary" onclick="deactivateApiKey('<%= apikey %>')">Deactivate</button>
+                                    <% if (key.status === 'active') { %>
+                                        <button class="button button-secondary" onclick="deactivateApiKey('<%= key.apikey %>')">Deactivate</button>
                                     <% } else { %>
-                                        <button class="button button-primary" onclick="reactivateApiKey('<%= apikey %>')">Reactivate</button>
+                                        <button class="button button-primary" onclick="reactivateApiKey('<%= key.apikey %>')">Reactivate</button>
                                     <% } %>
                                 </td>
                             </tr>
+                            <% }); %>
                         </tbody>
                     </table>
                 </div>
@@ -43,6 +45,8 @@
             <div class="plan-block" data-aos="fade-up">
                 <h4>Update API Expiration Date</h4>
                 <form action="/update-expiry" method="POST" class="form">
+                    <label for="apikey">API Key:</label>
+                    <input type="text" id="apikey" name="apikey" placeholder="Enter API Key" required>
                     <label for="new-expiry-date">Set New Expiration Date:</label>
                     <input type="date" id="new-expiry-date" name="new_expiry_date" required>
                     <button type="submit" class="button button-primary">Update</button>
