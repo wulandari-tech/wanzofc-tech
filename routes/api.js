@@ -1,19 +1,19 @@
 const express = require('express');
 const axios = require('axios');
-const crypto = require('crypto'); // Untuk encrypt dan decrypt
-const path = require('path'); // Untuk menangani path
+const crypto = require('crypto');
+const path = require('path');
 const router = express.Router();
 const { cekKey, updateKeyExpiry, deactivateKey, reactivateKey } = require('../database/db');
 const { youtubePlay, youtubeMp4, youtubeMp3 } = require('../controllers/yt');
 const { cakLontong, bijak, quotes, fakta, ptl, motivasi } = require('../controllers/randomtext');
 const { geminiAi } = require('../ai');
 
-// Set view engine ke EJS
-const app = express();
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, '../views')); // Pastikan path views benar
+// API Keys
+const GOOGLE_API_KEY = "8eccbe7f7ee0f975eccb8ecea6c70a73"; // API Key Google Cloud
+const WEATHER_API_KEY = "e4517bde90e743f0b99112303252001"; // API Key WeatherAPI
 
 // Middleware JSON
+const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -34,18 +34,96 @@ router.get('/checkkey', async (req, res) => {
     res.status(200).json({ status: 200, apikey, response: 'Active' });
 });
 
-// Endpoint untuk membaca file buyFull.ejs
-router.get('/buyfull', (req, res) => {
-    const data = {
-        title: 'Buy Full Access',
-        description: 'Upgrade to premium and unlock all features!',
-        author: 'Awanberlian',
-    };
+// Endpoint YouTube Search (YTS)
+router.get('/yts', async (req, res) => {
+    const { query, apikey } = req.query;
 
-    res.render('buyFull', data); // Menggunakan file buyFull.ejs di folder views
+    if (!query || !apikey) {
+        return res.status(400).json({
+            status: 400,
+            message: 'Parameter query dan apikey diperlukan!'
+        });
+    }
+
+    // Validasi API Key
+    const isValidKey = await cekKey(apikey);
+    if (!isValidKey) {
+        return res.status(403).json({
+            status: 403,
+            message: `API Key ${apikey} tidak valid!`
+        });
+    }
+
+    try {
+        const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+            params: {
+                part: 'snippet',
+                q: query,
+                maxResults: 5,
+                key: GOOGLE_API_KEY
+            }
+        });
+
+        const results = response.data.items.map((item) => ({
+            title: item.snippet.title,
+            description: item.snippet.description,
+            channel: item.snippet.channelTitle,
+            publishedAt: item.snippet.publishedAt,
+            thumbnail: item.snippet.thumbnails.default.url,
+            videoUrl: `https://www.youtube.com/watch?v=${item.id.videoId}`
+        }));
+
+        res.status(200).json({
+            status: 200,
+            results
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 500,
+            message: 'Gagal mendapatkan data dari YouTube!',
+            error: error.message
+        });
+    }
 });
 
-// Endpoint lainnya
+// Endpoint Cuaca
+router.get('/cuaca', async (req, res) => {
+    const { kota } = req.query;
+
+    if (!kota) {
+        return res.status(400).json({
+            status: 400,
+            message: 'Parameter kota is required!'
+        });
+    }
+
+    try {
+        const response = await axios.get(`https://api.weatherapi.com/v1/current.json`, {
+            params: {
+                key: WEATHER_API_KEY,
+                q: kota
+            }
+        });
+
+        const data = response.data;
+        res.status(200).json({
+            status: 200,
+            kota: data.location.name,
+            negara: data.location.country,
+            suhu: `${data.current.temp_c}°C`,
+            cuaca: data.current.condition.text,
+            angin: `${data.current.wind_kph} km/h`
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 500,
+            message: 'Gagal mendapatkan data cuaca!',
+            error: error.message
+        });
+    }
+});
+
+// Endpoint lain-lain
 router.get('/ytplay', youtubePlay);
 router.get('/ytmp4', youtubeMp4);
 router.get('/ytmp3', youtubeMp3);
@@ -55,8 +133,6 @@ router.get('/fakta', fakta);
 router.get('/bijak', bijak);
 router.get('/ptl', ptl);
 router.get('/motivasi', motivasi);
-
-// Tambahkan endpoint untuk Gemini AI
 router.get('/google-gemini', geminiAi);
 
 // Endpoint whoami
@@ -72,7 +148,7 @@ router.get('/whoami', (req, res) => {
 
 // Fungsi encrypt dan decrypt
 const ENCRYPTION_KEY = 'abcdefghijklmnop'.repeat(2); // Kunci 32 karakter
-const IV_LENGTH = 16; // Panjang IV
+const IV_LENGTH = 16;
 
 function encrypt(text) {
     const iv = crypto.randomBytes(IV_LENGTH);
@@ -114,42 +190,4 @@ router.get('/decrypt', (req, res) => {
     }
 });
 
-// Endpoint cuaca
-router.get('/cuaca', async (req, res) => {
-    const { kota } = req.query;
-    if (!kota) {
-        return res.status(400).json({
-            status: 400,
-            message: 'Parameter kota is required!'
-        });
-    }
-
-    try {
-        const apiKey = 'e4517bde90e743f0b99112303252001'; // API Key dari WeatherAPI
-        const response = await axios.get(`https://api.weatherapi.com/v1/current.json`, {
-            params: {
-                key: apiKey,
-                q: kota
-            }
-        });
-
-        const data = response.data;
-        res.status(200).json({
-            status: 200,
-            kota: data.location.name,
-            negara: data.location.country,
-            suhu: `${data.current.temp_c}°C`,
-            cuaca: data.current.condition.text,
-            angin: `${data.current.wind_kph} km/h`
-        });
-    } catch (error) {
-        res.status(500).json({
-            status: 500,
-            message: 'Gagal mendapatkan data cuaca!',
-            error: error.message
-        });
-    }
-});
-
-// Export router
 module.exports = router;
