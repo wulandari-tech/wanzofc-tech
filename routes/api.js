@@ -1,72 +1,51 @@
 const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto'); // Untuk encrypt dan decrypt
+const path = require('path'); // Untuk menangani path
 const router = express.Router();
-const { cekKey, updateKeyExpiry, deactivateKey, reactivateKey } = require('../database/db'); 
+const { cekKey, updateKeyExpiry, deactivateKey, reactivateKey } = require('../database/db');
 const { youtubePlay, youtubeMp4, youtubeMp3 } = require('../controllers/yt');
 const { cakLontong, bijak, quotes, fakta, ptl, motivasi } = require('../controllers/randomtext');
 const { geminiAi } = require('../ai');
 
-// Cek API Key
+// Set view engine ke EJS
+const app = express();
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, '../views')); // Pastikan path views benar
+
+// Middleware JSON
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Endpoint cek API Key
 router.get('/checkkey', async (req, res) => {
     const apikey = req.query.apikey;
-    if (apikey === undefined) return res.status(404).send({
+    if (!apikey) return res.status(404).json({
         status: 404,
-        message: `Input Parameter apikey`
+        message: 'Parameter apikey is required!'
     });
+
     const check = await cekKey(apikey);
-    if (!check) return res.status(403).send({
+    if (!check) return res.status(403).json({
         status: 403,
-        message: `apikey ${apikey} not found, please register first!`
+        message: `API Key ${apikey} not found, please register first!`
     });
-    res.send({ status: 200, apikey: apikey, response: 'Active' });
+
+    res.status(200).json({ status: 200, apikey, response: 'Active' });
 });
 
-// Tambahkan fitur premium
+// Endpoint untuk membaca file buyFull.ejs
+router.get('/buyfull', (req, res) => {
+    const data = {
+        title: 'Buy Full Access',
+        description: 'Upgrade to premium and unlock all features!',
+        author: 'Awanberlian',
+    };
 
-// Endpoint untuk mengupdate tanggal kadaluarsa API Key
-router.post('/update-expiry', async (req, res) => {
-    const { apikey, expiry_date } = req.body;
-    if (!apikey || !expiry_date) {
-        return res.status(400).send({ status: 400, message: 'apikey and expiry_date are required!' });
-    }
-    const result = await updateKeyExpiry(apikey, expiry_date);
-    if (result) {
-        res.send({ status: 200, message: 'Expiry date updated successfully!' });
-    } else {
-        res.status(404).send({ status: 404, message: 'API key not found!' });
-    }
+    res.render('buyFull', data); // Menggunakan file buyFull.ejs di folder views
 });
 
-// Endpoint untuk menonaktifkan API Key
-router.post('/deactivate-api', async (req, res) => {
-    const { apikey } = req.body;
-    if (!apikey) {
-        return res.status(400).send({ status: 400, message: 'apikey is required!' });
-    }
-    const result = await deactivateKey(apikey);
-    if (result) {
-        res.send({ status: 200, message: 'API key deactivated successfully!' });
-    } else {
-        res.status(404).send({ status: 404, message: 'API key not found!' });
-    }
-});
-
-// Endpoint untuk mengaktifkan kembali API Key
-router.post('/reactivate-api', async (req, res) => {
-    const { apikey } = req.body;
-    if (!apikey) {
-        return res.status(400).send({ status: 400, message: 'apikey is required!' });
-    }
-    const result = await reactivateKey(apikey);
-    if (result) {
-        res.send({ status: 200, message: 'API key reactivated successfully!' });
-    } else {
-        res.status(404).send({ status: 404, message: 'API key not found!' });
-    }
-});
-
-// Endpoint lainnya tetap
+// Endpoint lainnya
 router.get('/ytplay', youtubePlay);
 router.get('/ytmp4', youtubeMp4);
 router.get('/ytmp3', youtubeMp3);
@@ -87,45 +66,8 @@ router.get('/whoami', (req, res) => {
         message: 'Welcome to the API!',
         author: 'Awanberlian',
         github: 'https://github.com/awanbrayy',
-        telegram: '@wanzofc'
+        telegram: '@wanzofc',
     });
-});
-
-// Endpoint cuaca
-router.get('/cuaca', async (req, res) => {
-    const { kota } = req.query;
-    if (!kota) {
-        return res.status(400).json({
-            status: 400,
-            message: 'Parameter kota is required!'
-        });
-    }
-
-    try {
-        const apiKey = 'YOUR_OPENWEATHER_API_KEY'; // Ganti dengan API Key OpenWeather
-        const response = await axios.get(`https://api.openweathermap.org/data/2.5/weather`, {
-            params: {
-                q: kota,
-                units: 'metric',
-                appid: apiKey
-            }
-        });
-
-        const data = response.data;
-        res.status(200).json({
-            status: 200,
-            kota: data.name,
-            suhu: `${data.main.temp}°C`,
-            cuaca: data.weather[0].description,
-            angin: `${data.wind.speed} m/s`
-        });
-    } catch (error) {
-        res.status(500).json({
-            status: 500,
-            message: 'Gagal mendapatkan data cuaca!',
-            error: error.message
-        });
-    }
 });
 
 // Fungsi encrypt dan decrypt
@@ -169,6 +111,43 @@ router.get('/decrypt', (req, res) => {
         res.status(200).json({ status: 200, decrypted });
     } catch (error) {
         res.status(500).json({ status: 500, message: 'Invalid encrypted text!' });
+    }
+});
+
+// Endpoint cuaca
+router.get('/cuaca', async (req, res) => {
+    const { kota } = req.query;
+    if (!kota) {
+        return res.status(400).json({
+            status: 400,
+            message: 'Parameter kota is required!'
+        });
+    }
+
+    try {
+        const apiKey = 'e4517bde90e743f0b99112303252001'; // API Key dari WeatherAPI
+        const response = await axios.get(`https://api.weatherapi.com/v1/current.json`, {
+            params: {
+                key: apiKey,
+                q: kota
+            }
+        });
+
+        const data = response.data;
+        res.status(200).json({
+            status: 200,
+            kota: data.location.name,
+            negara: data.location.country,
+            suhu: `${data.current.temp_c}°C`,
+            cuaca: data.current.condition.text,
+            angin: `${data.current.wind_kph} km/h`
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 500,
+            message: 'Gagal mendapatkan data cuaca!',
+            error: error.message
+        });
     }
 });
 
