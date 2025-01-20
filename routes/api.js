@@ -115,7 +115,7 @@ router.get('/yts', async (req, res) => {
             params: {
                 part: 'snippet',
                 q: query,
-                key: 'YOUR_YOUTUBE_API_KEY', // Ganti dengan YouTube API Key Anda
+                key: 'AIzaSyCuV73IqmbO25dYuMIMDrmmIwVowNWEUns', // Ganti dengan YouTube API Key Anda
                 maxResults: 10
             }
         });
