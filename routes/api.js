@@ -9,7 +9,7 @@ const { cakLontong, bijak, quotes, fakta, ptl, motivasi } = require('../controll
 const { geminiAi } = require('../ai');
 
 // API Keys
-const GOOGLE_API_KEY = "8eccbe7f7ee0f975eccb8ecea6c70a73"; // API Key Google Cloud
+const GOOGLE_API_KEY = "AIzaSyCuV73IqmbO25dYuMIMDrmmIwVowNWEUns"; // API Key Google Cloud
 const WEATHER_API_KEY = "e4517bde90e743f0b99112303252001"; // API Key WeatherAPI
 
 // Middleware JSON
