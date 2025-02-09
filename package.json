@@ -1,5 +1,5 @@
 {
-  "name": "nodejs-restapi",
+  "name": "nodejs",
   "version": "1.0.0",
   "description": "Rest-API - Express JS",
   "main": "app.js",
