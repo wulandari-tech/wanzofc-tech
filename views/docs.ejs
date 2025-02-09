@@ -133,13 +133,533 @@
                                     <a target="__blank" href="/api/google-gemini?prompt=Hello&apikey=<%= apikey %>" class="button button-primary cta">Try</a>
                                 </td>
                             </tr>
-                            <tr>
+                             <tr>
                                 <td>Weather</td>
                                 <td>city & apikey</td>
                                 <td>Get Weather Info</td>
                                 <td>
-                                    <a target="__blank" href="/api/weather?city=Jakarta&apikey=<%= apikey %>" class="button button-primary cta">Try</a>
+                                    <a target="__blank" href="/api/cuaca?kota=Jakarta&apikey=<%= apikey %>" class="button button-primary cta">Try</a>
                                 </td>
+                            </tr>
+                            <tr>
+                                <td>YouTube Search</td>
+                                <td>query & apikey</td>
+                                <td>Search on YouTube</td>
+                                <td>
+                                    <a target="__blank" href="/api/yts?query=trending&apikey=<%= apikey %>" class="button button-primary cta">Try</a>
+                                </td>
+                            </tr>
+                            
+                            <!--  Add links for the other API endpoints here, following the same pattern -->
+                            <tr>
+                                <td>Deepseek Chat</td>
+                                <td>content & apikey</td>
+                                <td>Deepseek Chat AI</td>
+                                <td><a target="__blank" href="/api/ai/deepseek-chat?content=Hello&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Image to Text</td>
+                                <td>apikey</td>
+                                <td>Convert Image to Text</td>
+                                <td><a target="__blank" href="/api/ai/image2text?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Gemini Pro AI</td>
+                                <td>content & apikey</td>
+                                <td>Google Gemini Pro Chat AI</td>
+                                <td><a target="__blank" href="/api/ai/gemini-pro?content=Hello&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Meta Llama</td>
+                                <td>content & apikey</td>
+                                <td>Meta Llama AI</td>
+                                <td><a target="__blank" href="/api/ai/meta-llama?content=Hello&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>DBRX Instruct</td>
+                                <td>content & apikey</td>
+                                <td>DBRX Instruct AI</td>
+                                <td><a target="__blank" href="/api/ai/dbrx-instruct?content=Hello&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>Deepseek R1</td>
+                                <td>content & apikey</td>
+                                <td>Deepseek R1 AI</td>
+                                <td><a target="__blank" href="/api/ai/deepseek-r1?content=Hello&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Gita AI</td>
+                                <td>q & apikey</td>
+                                <td>Gita AI</td>
+                                <td><a target="__blank" href="/api/gita?q=Hello&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Anime Latest</td>
+                                <td>apikey</td>
+                                <td>Get Latest Anime</td>
+                                <td><a target="__blank" href="/api/anime/latest?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Anichin Episode</td>
+                                <td>url & apikey</td>
+                                <td>Get Anichin Episode</td>
+                                <td><a target="__blank" href="/api/anime/anichin-episode?url=https://anichin.vip/episode/one-piece-episode-1000/&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>MediaFire Downloader</td>
+                                <td>url & apikey</td>
+                                <td>Download from MediaFire</td>
+                                <td><a target="__blank" href="/api/d/mediafire?url=https://www.mediafire.com/file/example&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Blue Archive Image</td>
+                                <td>apikey</td>
+                                <td>Get Random Blue Archive Image</td>
+                                <td><a target="__blank" href="/api/r/blue-archive?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>Random Anime Quotes</td>
+                                <td>apikey</td>
+                                <td>Get Random Anime Quotes</td>
+                                <td><a target="__blank" href="/api/r/quotesanime?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>TikTok Downloader</td>
+                                <td>url & apikey</td>
+                                <td>Download from TikTok</td>
+                                <td><a target="__blank" href="/api/d/tiktok?url=https://www.tiktok.com/@example&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Instagram Downloader</td>
+                                <td>url & apikey</td>
+                                <td>Download from Instagram</td>
+                                <td><a target="__blank" href="/api/d/igdl?url=https://www.instagram.com/p/example&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>SnackVideo Downloader</td>
+                                <td>url & apikey</td>
+                                <td>Download from SnackVideo</td>
+                                <td><a target="__blank" href="/api/d/snackvideo?url=https://www.snackvideo.com/example&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>CapCut Template Downloader</td>
+                                <td>url & apikey</td>
+                                <td>Download from CapCut Template</td>
+                                <td><a target="__blank" href="/api/d/capcut?url=https://www.capcut.com/example&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>YouTube Stalker</td>
+                                <td>username & apikey</td>
+                                <td>Stalk YouTube User</td>
+                                <td><a target="__blank" href="/api/stalk/youtube?username=example&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>TikTok Stalker</td>
+                                <td>username & apikey</td>
+                                <td>Stalk TikTok User</td>
+                                <td><a target="__blank" href="/api/stalk/tiktok?username=example&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>GitHub Stalker</td>
+                                <td>user & apikey</td>
+                                <td>Stalk GitHub User</td>
+                                <td><a target="__blank" href="/api/stalk/github?user=example&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>TikTok Search</td>
+                                <td>query & apikey</td>
+                                <td>Search on TikTok</td>
+                                <td><a target="__blank" href="/api/s/tiktok?query=example&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>AI Uncovr Chat</td>
+                                <td>content & apikey</td>
+                                <td>AI Chat with Uncovr</td>
+                                <td><a target="__blank" href="/api/ai/uncovr?content=Hello&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>AI wanzofc</td>
+                                <td>text & apikey</td>
+                                <td>AI Search with wanzofc</td>
+                                <td><a target="__blank" href="/api/ai/wanzofc?text=Hello&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Anime Otakudesu Search</td>
+                                <td>s & apikey</td>
+                                <td>Search Anime on Otakudesu</td>
+                                <td><a target="__blank" href="/api/anime/otakudesu/search?s=onepiece&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>SaveFrom Downloader</td>
+                                <td>url & apikey</td>
+                                <td>Download from SaveFrom</td>
+                                <td><a target="__blank" href="/api/d/savefrom?url=https://www.youtube.com/watch?v=example&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>GitHub Downloader</td>
+                                <td>url & apikey</td>
+                                <td>Download GitHub Repository</td>
+                                <td><a target="__blank" href="/api/d/github?url=https://github.com/example/example&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Informasi Jadwal TV</td>
+                                <td>apikey</td>
+                                <td>Get Jadwal TV Information</td>
+                                <td><a target="__blank" href="/api/info/jadwaltv?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Informasi Libur Nasional</td>
+                                <td>apikey</td>
+                                <td>Get Hari Libur Nasional Information</td>
+                                <td><a target="__blank" href="/api/info/liburnasional?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Informasi BMKG</td>
+                                <td>apikey</td>
+                                <td>Get BMKG Information</td>
+                                <td><a target="__blank" href="/api/info/bmkg?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>Informasi Cuaca</td>
+                                <td>apikey</td>
+                                <td>Get Cuaca Information</td>
+                                <td><a target="__blank" href="/api/info/cuaca?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Gitagram Search</td>
+                                <td>apikey</td>
+                                <td>Search on Gitagram</td>
+                                <td><a target="__blank" href="/api/s/gitagram?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>DuckDuckGo Search</td>
+                                <td>apikey</td>
+                                <td>Search on DuckDuckGo</td>
+                                <td><a target="__blank" href="/api/s/duckduckgo?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Combot Search</td>
+                                <td>apikey</td>
+                                <td>Search on Combot</td>
+                                <td><a target="__blank" href="/api/s/combot?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Bukalapak Search</td>
+                                <td>apikey</td>
+                                <td>Search on Bukalapak</td>
+                                <td><a target="__blank" href="/api/s/bukalapak?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>Brave Search</td>
+                                <td>apikey</td>
+                                <td>Search on Brave</td>
+                                <td><a target="__blank" href="/api/s/brave?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Berita Kompas</td>
+                                <td>apikey</td>
+                                <td>Get Berita from Kompas</td>
+                                <td><a target="__blank" href="/api/berita/kompas?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Berita JKT48</td>
+                                <td>apikey</td>
+                                <td>Get Berita from JKT48</td>
+                                <td><a target="__blank" href="/api/berita/jkt48?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Berita CNN</td>
+                                <td>apikey</td>
+                                <td>Get Berita from CNN</td>
+                                <td><a target="__blank" href="/api/berita/cnn?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Berita CNBC Indonesia</td>
+                                <td>apikey</td>
+                                <td>Get Berita from CNBC Indonesia</td>
+                                <td><a target="__blank" href="/api/berita/cnbcindonesia?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Berita Antara</td>
+                                <td>apikey</td>
+                                <td>Get Berita from Antara</td>
+                                <td><a target="__blank" href="/api/berita/antara?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Berita Tribunnews</td>
+                                <td>apikey</td>
+                                <td>Get Berita from Tribunnews</td>
+                                <td><a target="__blank" href="/api/berita/tribunnews?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>Berita Suara</td>
+                                <td>apikey</td>
+                                <td>Get Berita from Suara</td>
+                                <td><a target="__blank" href="/api/berita/suara?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Berita Merdeka</td>
+                                <td>apikey</td>
+                                <td>Get Berita from Merdeka</td>
+                                <td><a target="__blank" href="/api/berita/merdeka?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>Berita Sindonews</td>
+                                <td>apikey</td>
+                                <td>Get Berita from Sindonews</td>
+                                <td><a target="__blank" href="/api/berita/sindonews?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>Berita Liputan6</td>
+                                <td>apikey</td>
+                                <td>Get Berita from Liputan6</td>
+                                <td><a target="__blank" href="/api/berita/liputan6?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>APK Play Store</td>
+                                <td>apikey</td>
+                                <td>Get APK from Play Store</td>
+                                <td><a target="__blank" href="/api/apk/playstore?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>APK HappyMod</td>
+                                <td>apikey</td>
+                                <td>Get APK from HappyMod</td>
+                                <td><a target="__blank" href="/api/apk/happymod?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>APK App Store</td>
+                                <td>apikey</td>
+                                <td>Get APK from App Store</td>
+                                <td><a target="__blank" href="/api/apk/appstore?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>APK APKPure</td>
+                                <td>apikey</td>
+                                <td>Get APK from APKPure</td>
+                                <td><a target="__blank" href="/api/apk/apkpure?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>APK APKMody</td>
+                                <td>apikey</td>
+                                <td>Get APK from APKMody</td>
+                                <td><a target="__blank" href="/api/apk/apkmody?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>Tools Subdomains</td>
+                                <td>domain & apikey</td>
+                                <td>Get Tools Subdomains</td>
+                                <td><a target="__blank" href="/api/tools/subdomains?domain=google.com&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Tools Text2Base64</td>
+                                <td>text & apikey</td>
+                                <td>Get Tools Text2Base64</td>
+                                <td><a target="__blank" href="/api/tools/text2base64?text=Hello&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>Tools Text2QR</td>
+                                <td>text & apikey</td>
+                                <td>Get Tools Text2QR</td>
+                                <td><a target="__blank" href="/api/tools/text2qr?text=Hello&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Tools Translate</td>
+                                <td>text & apikey</td>
+                                <td>Get Tools Translate</td>
+                                <td><a target="__blank" href="/api/tools/translate?text=Hello&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>AI Lepton</td>
+                                <td>text & apikey</td>
+                                <td>Get AI Lepton</td>
+                                <td><a target="__blank" href="/api/ai/lepton?text=Hello&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>AI Gpt3</td>
+                                <td>prompt, content & apikey</td>
+                                <td>Get AI Gpt3</td>
+                                <td><a target="__blank" href="/api/ai/gpt3?prompt=Hallo&content=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Random Waifu</td>
+                                <td>apikey</td>
+                                <td>Get Random Waifu</td>
+                                <td><a target="__blank" href="/api/r/waifu?apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>CF Sentiment</td>
+                                <td>text & apikey</td>
+                                <td>Get CF Sentiment</td>
+                                <td><a target="__blank" href="/api/cf/sentiment?text=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>CF Image Classification</td>
+                                <td>imageUrl & apikey</td>
+                                <td>Get CF Image Classification</td>
+                                <td><a target="__blank" href="/api/cf/image-classification?imageUrl=https://cataas.com/cat&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>CF Embedding</td>
+                                <td>text & apikey</td>
+                                <td>Get CF Embedding</td>
+                                <td><a target="__blank" href="/api/cf/embedding?text=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>CF Chat</td>
+                                <td>prompt, system & apikey</td>
+                                <td>Get CF Chat</td>
+                                <td><a target="__blank" href="/api/cf/chat?prompt=Hallo&system=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>AI Qwen257b</td>
+                                <td>prompt, text & apikey</td>
+                                <td>Get AI Qwen257b</td>
+                                <td><a target="__blank" href="/api/ai/qwen257b?prompt=Hallo&text=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>AI Qwq 32b Preview</td>
+                                <td>content & apikey</td>
+                                <td>Get AI Qwq 32b Preview</td>
+                                <td><a target="__blank" href="/api/ai/qwq-32b-preview?content=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Pinterest</td>
+                                <td>query & apikey</td>
+                                <td>Search From Pinterest</td>
+                                <td><a target="__blank" href="/api/s/pinterest?query=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>SoundCloud</td>
+                                <td>query & apikey</td>
+                                <td>Search From SoundCloud</td>
+                                <td><a target="__blank" href="/api/s/soundcloud?query=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>NPM</td>
+                                <td>packageName & apikey</td>
+                                <td>Search From NPM</td>
+                                <td><a target="__blank" href="/api/stalk/npm?packageName=express&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>stabilityai</td>
+                                <td>prompt & apikey</td>
+                                <td>Search From stabilityai</td>
+                                <td><a target="__blank" href="/api/ai/stabilityai?prompt=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Wikipedia</td>
+                                <td>query & apikey</td>
+                                <td>Search From Wikipedia</td>
+                                <td><a target="__blank" href="/api/s/wikipedia?query=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>Spotify</td>
+                                <td>query & apikey</td>
+                                <td>Search From Spotify</td>
+                                <td><a target="__blank" href="/api/s/spotify?query=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Fake Data</td>
+                                <td>type & apikey</td>
+                                <td>Get Fake Data</td>
+                                <td><a target="__blank" href="/api/tools/fake-data?type=person&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Cek Potensi Penyakit</td>
+                                <td>tgl, bln, thn & apikey</td>
+                                <td>Cek Potensi Penyakit</td>
+                                <td><a target="__blank" href="/api/primbon/cek_potensi_penyakit?tgl=1&bln=1&thn=2000&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Ramalan Jodoh</td>
+                                <td>nama1, tgl1, bln1, thn1, nama2, tgl2, bln2, thn2 & apikey</td>
+                                <td>Ramalan Jodoh</td>
+                                <td><a target="__blank" href="/api/primbon/ramalanjodoh?nama1=awan&tgl1=1&bln1=1&thn1=2000&nama2=berlian&tgl2=1&bln2=1&thn2=2000&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Rejeki Hoki Weton</td>
+                                <td>tgl, bln, thn & apikey</td>
+                                <td>Rejeki Hoki Weton</td>
+                                <td><a target="__blank" href="/api/primbon/rejeki_hoki_weton?tgl=1&bln=1&thn=2000&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Sifat Usaha Bisnis</td>
+                                <td>tgl, bln, thn & apikey</td>
+                                <td>Sifat Usaha Bisnis</td>
+                                <td><a target="__blank" href="/api/primbon/sifat_usaha_bisnis?tgl=1&bln=1&thn=2000&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Tafsir Mimpi</td>
+                                <td>mimpi & apikey</td>
+                                <td>Tafsir Mimpi</td>
+                                <td><a target="__blank" href="/api/primbon/tafsirmimpi?mimpi=Mimpi&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>Arti Nama</td>
+                                <td>nama & apikey</td>
+                                <td>Arti Nama</td>
+                                <td><a target="__blank" href="/api/primbon/artinama?nama=Awan&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Kecocokan Nama Pasangan</td>
+                                <td>nama1, nama2 & apikey</td>
+                                <td>Kecocokan Nama Pasangan</td>
+                                <td><a target="__blank" href="/api/primbon/kecocokan_nama_pasangan?nama1=Awan&nama2=Berlian&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Nomor Hoki</td>
+                                <td>phoneNumber & apikey</td>
+                                <td>Nomor Hoki</td>
+                                <td><a target="__blank" href="/api/primbon/nomorhoki?phoneNumber=08123456789&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Zodiak</td>
+                                <td>zodiak & apikey</td>
+                                <td>Zodiak</td>
+                                <td><a target="__blank" href="/api/primbon/zodiak?zodiak=aries&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>Meta AI</td>
+                                <td>query & apikey</td>
+                                <td>Get Meta AI</td>
+                                <td><a target="__blank" href="/api/ai/metaai?query=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Ustadz</td>
+                                <td>query & apikey</td>
+                                <td>Get Ustadz</td>
+                                <td><a target="__blank" href="/api/ai/ustadz?query=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Khodam</td>
+                                <td>content & apikey</td>
+                                <td>Get Khodam</td>
+                                <td><a target="__blank" href="/api/ai/khodam?content=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                             <tr>
+                                <td>wanzofc You</td>
+                                <td>q & apikey</td>
+                                <td>Get wanzofc You</td>
+                                <td><a target="__blank" href="/api/ai/wanzofc-you?q=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>wanzofc Llama</td>
+                                <td>q & apikey</td>
+                                <td>Get wanzofc Llama</td>
+                                <td><a target="__blank" href="/api/ai/wanzofc-llama?q=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>Get meta-llama</td>
+                                <td>content & apikey</td>
+                                <td>Get Get meta-llama</td>
+                                <td><a target="__blank" href="/api/ai/meta-llama?content=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
+                            </tr>
+                            <tr>
+                                <td>xnxx</td>
+                                <td>query & apikey</td>
+                                <td>Search From  xnxx</td>
+                                <td><a target="__blank" href="/api/search/xnxx?q=Hallo&apikey=<%= apikey %>" class="button button-primary cta">Try</a></td>
                             </tr>
                         </tbody>
                     </table>
