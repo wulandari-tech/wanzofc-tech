@@ -14,7 +14,7 @@ const userRouters = require('./routes/users');
 
 const { isAuthenticated } = require('./lib/auth');
 const { connectMongoDb } = require('./database/connect');
-const { getApikey } = require('./database/db');
+const { getApikey } = require('./database/db'); // Pastikan path ini benar
 const { port } = require('./lib/settings');
 
 const PORT = process.env.PORT || port;
@@ -27,7 +27,7 @@ app.use(compression())
 const limiter = rateLimit({
     windowMs: 1 * 60 * 1000,
     max: 2000,
-    message: 'Oops too many requests'
+    message: 'Oops terlalu banyak permintaan'
 });
 app.use(limiter);
 
@@ -84,35 +84,49 @@ app.get('/docs', isAuthenticated, async (req, res) => {
     }
 });
 
+// Rute untuk Halaman Harga
 app.get('/price', isAuthenticated, async (req, res) => {
     try {
-        // Check if user is authenticated and has a username
+        // Periksa apakah pengguna terotentikasi dan memiliki username
         const username = req.user ? (req.user.username || req.user.id) : 'Guest';
+
+        // Ambil apikey di sini!
+        let getkey = await getApikey(req.user.id);
+        let { apikey } = getkey; // Ekstrak apikey dari objek yang dikembalikan
+
+        // Render halaman dengan data
         res.render('buyFull', {
             layout: 'layouts/main',
-            apikey: apikey,
-            username: username  // Pass the username variable
+            apikey: apikey, // Sekarang Anda bisa menggunakan apikey
+            username: username  // Kirim variabel username
         });
     } catch (error) {
-        console.error("Error rendering /price:", error);
-        res.locals.error_msg = "Error loading price page. Please try again.";
-        res.redirect('/'); // Redirect to home or an error page
+        console.error("Kesalahan saat merender /price:", error);
+        res.locals.error_msg = "Kesalahan saat memuat halaman harga. Silakan coba lagi.";
+        res.redirect('/'); // Alihkan ke halaman beranda atau halaman kesalahan
     }
 });
 
+// Rute untuk Halaman Premium
 app.get('/premium', isAuthenticated, async (req, res) => {
     try {
-        // Check if user is authenticated and has a username
+        // Periksa apakah pengguna terotentikasi dan memiliki username
         const username = req.user ? (req.user.username || req.user.id) : 'Guest';
+
+        // Ambil apikey di sini!
+        let getkey = await getApikey(req.user.id);
+        let { apikey } = getkey; // Ekstrak apikey dari objek yang dikembalikan
+
+        // Render halaman dengan data
         res.render('buyFull', {
             layout: 'layouts/main',
-            apikey: apikey,
-            username: username  // Pass the username variable
+            apikey: apikey, // Sekarang Anda bisa menggunakan apikey
+            username: username  // Kirim variabel username
         });
     } catch (error) {
-        console.error("Error rendering /premium:", error);
-        res.locals.error_msg = "Error loading premium page. Please try again.";
-        res.redirect('/'); // Redirect to home or an error page
+        console.error("Kesalahan saat merender /premium:", error);
+        res.locals.error_msg = "Kesalahan saat memuat halaman premium. Silakan coba lagi.";
+        res.redirect('/'); // Alihkan ke halaman beranda atau halaman kesalahan
     }
 });
 
