@@ -40,7 +40,7 @@ const apiKeys = [
 ];
 
 // Kirim data ke template EJS
-app.get('/products', (req, res) => {
-  res.render('products', { apiKeys: apiKeys }); // Render file products.ejs
+app.get('/premium', (req, res) => {
+  res.render('buyFull', { apiKeys: apiKeys }); // Render file products.ejs
 });
 </script>
