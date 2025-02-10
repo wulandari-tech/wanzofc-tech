@@ -104,33 +104,13 @@ app.get('/docs', isAuthenticated, async (req, res) => {
 });
 
 // Rute untuk Halaman Harga
-app.get('/price', isAuthenticated, async (req, res) => {
-    try {
-        const username = req.user ? (req.user.username || req.user.id) : 'Guest';
-        let getkey = await getApikey(req.user.id);
-        let { apikey } = getkey;
-
-        res.render('buyFull', {
-            layout: 'layouts/main',
-            apikey: apikey,
-            username: username
-        });
-    } catch (error) {
-        console.error("Kesalahan saat merender /price:", error);
-        res.locals.error_msg = "Kesalahan saat memuat halaman harga. Silakan coba lagi.";
-        res.redirect('/');
-    }
+app.get('/price', isAuthenticated, (req, res) => {
+    res.sendFile(path.join(__dirname, 'buyfull.html'));
 });
-
-// Rute untuk Halaman Premium
-
 
 // Rute untuk Halaman Daftar Produk API Key
 app.get('/princing', (req, res) => {
-    res.render('buyFull', {
-        layout: 'layouts/main',
-        apiKeys: apiKeys  // Kirim data API Key ke template
-    });
+    res.sendFile(path.join(__dirname, 'buyfull.html'));
 });
 
 app.use('/api', apiRouters);
