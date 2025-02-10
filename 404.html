@@ -1,0 +1,92 @@
+<div id="root"></div>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+  const canvas = document.createElement("canvas");
+  document.body.appendChild(canvas);
+
+  // Set up canvas styles
+  canvas.style.position = "absolute";
+  canvas.style.top = "0";
+  canvas.style.left = "0";
+  canvas.style.width = "100vw";
+  canvas.style.height = "100vh";
+  canvas.style.zIndex = "-1";
+
+  const context = canvas.getContext("2d");
+
+  let columns;
+  let drops;
+  const fontSize = 16;
+  const characters = "01";
+
+  const resizeCanvas = () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Add an extra column to cover any potential gaps
+    columns = Math.ceil(canvas.width / fontSize);
+    drops = Array(columns).fill(1);
+  };
+
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
+
+  const drawMatrix = () => {
+    context.fillStyle = "rgba(0, 0, 0, 0.1)";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    context.fillStyle = "#00ff00";
+    context.font = `${fontSize}px monospace`;
+
+    drops.forEach((y, index) => {
+      const text = characters[Math.floor(Math.random() * characters.length)];
+      const x = index * fontSize;
+
+      context.fillText(text, x, y * fontSize);
+
+      if (y * fontSize > canvas.height && Math.random() > 0.975) {
+        drops[index] = 0;
+      }
+      drops[index]++;
+    });
+  };
+
+  setInterval(drawMatrix, 50);
+
+  // Add the centered content
+  const content = document.createElement("div");
+  content.style.position = "absolute";
+  content.style.top = "50%";
+  content.style.left = "50%";
+  content.style.transform = "translate(-50%, -50%)";
+  content.style.textAlign = "center";
+  content.style.color = "#00ff00";
+  content.style.fontFamily = "monospace";
+
+  const heading = document.createElement("h1");
+  heading.style.fontSize = "8rem";
+  heading.textContent = "404";
+
+  const message = document.createElement("p");
+  message.style.fontSize = "2rem";
+  message.textContent = "Anda tampaknya tersesat dalam wanzofc.";
+
+  const link = document.createElement("a");
+  link.href = "/";
+  link.style.color = "#00ff00";
+  link.style.textDecoration = "none";
+  link.style.border = "2px solid #00ff00";
+  link.style.padding = "1rem 2rem";
+  link.style.borderRadius = "5px";
+  link.style.fontSize = "1.5rem";
+  link.style.display = "inline-block";
+  link.style.marginTop = "1rem";
+  link.textContent = "Return Home";
+
+  content.appendChild(heading);
+  content.appendChild(message);
+  content.appendChild(link);
+  document.body.appendChild(content);
+});
+
+</script>
