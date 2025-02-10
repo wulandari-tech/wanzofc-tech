@@ -90,6 +90,7 @@ app.get('/price', isAuthenticated, async (req, res) => {
         const username = req.user ? (req.user.username || req.user.id) : 'Guest';
         res.render('buyFull', {
             layout: 'layouts/main',
+            apikey: apikey,
             username: username  // Pass the username variable
         });
     } catch (error) {
@@ -105,6 +106,7 @@ app.get('/premium', isAuthenticated, async (req, res) => {
         const username = req.user ? (req.user.username || req.user.id) : 'Guest';
         res.render('buyFull', {
             layout: 'layouts/main',
+            apikey: apikey,
             username: username  // Pass the username variable
         });
     } catch (error) {
