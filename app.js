@@ -16,9 +16,13 @@ const userRouters = require('./routes/users');
 const { isAuthenticated } = require('./lib/auth');
 const { connectMongoDb } = require('./database/connect');
 const { getApikey } = require('./database/db'); // Pastikan path ini benar
-const { port } = require('./lib/settings');
 
-const PORT = process.env.PORT || port;
+// const { port } = require('./lib/settings'); // Hapus baris ini
+
+// const PORT = process.env.PORT || port; // Hapus baris ini
+
+const PORT = process.env.PORT || 3000; // Ganti dengan ini
+
 
 connectMongoDb();
 
