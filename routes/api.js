@@ -58,6 +58,45 @@ router.get('/daftar', (req, res) => {
     res.sendFile(path.join(__dirname, 'login.html'));
 });
 
+// API Endpoints to Deactivate and Reactivate API Keys
+router.post('/deactivate-api', checkApiKey, async (req, res) => {
+    const { apikey } = req.query; // Get apikey from query parameter
+    if (!apikey) {
+        return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Parameter apikey diperlukan." });
+    }
+
+    try {
+        const result = await deactivateKey(apikey); // Use the deactivateKey function from db.js
+        if (result) {
+            return res.json({ creator: "WANZOFC TECH", result: true, message: "API key berhasil dinonaktifkan." });
+        } else {
+            return res.status(404).json({ creator: "WANZOFC TECH", result: false, message: "API key tidak ditemukan." });
+        }
+    } catch (error) {
+        console.error("Gagal menonaktifkan API key:", error);
+        return res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Terjadi kesalahan server saat menonaktifkan API key." });
+    }
+});
+
+router.post('/reactivate-api', checkApiKey, async (req, res) => {
+    const { apikey } = req.query; // Get apikey from query parameter
+    if (!apikey) {
+        return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Parameter apikey diperlukan." });
+    }
+
+    try {
+        const result = await reactivateKey(apikey); // Use the reactivateKey function from db.js
+        if (result) {
+            return res.json({ creator: "WANZOFC TECH", result: true, message: "API key berhasil diaktifkan kembali." });
+        } else {
+            return res.status(404).json({ creator: "WANZOFC TECH", result: false, message: "API key tidak ditemukan." });
+        }
+    } catch (error) {
+        console.error("Gagal mengaktifkan kembali API key:", error);
+        return res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Terjadi kesalahan server saat mengaktifkan kembali API key." });
+    }
+});
+
 // AI Endpoints (adapting examples, ensure API keys are handled securely)
 router.get('/ai/deepseek-chat', checkApiKey, async (req, res) => {
     const query = req.query.content || "halo";
@@ -1154,6 +1193,45 @@ router.get('/search/xnxx', checkApiKey, async (req, res) => {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data dari XNXX." });
     } finally {
         console.log('XNXX Search request completed.');
+    }
+});
+
+// API Endpoints to Deactivate and Reactivate API Keys
+router.post('/deactivate-api', checkApiKey, async (req, res) => {
+    const { apikey } = req.query; // Get apikey from query parameter
+    if (!apikey) {
+        return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Parameter apikey diperlukan." });
+    }
+
+    try {
+        const result = await deactivateKey(apikey); // Use the deactivateKey function from db.js
+        if (result) {
+            return res.json({ creator: "WANZOFC TECH", result: true, message: "API key berhasil dinonaktifkan." });
+        } else {
+            return res.status(404).json({ creator: "WANZOFC TECH", result: false, message: "API key tidak ditemukan." });
+        }
+    } catch (error) {
+        console.error("Gagal menonaktifkan API key:", error);
+        return res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Terjadi kesalahan server saat menonaktifkan API key." });
+    }
+});
+
+router.post('/reactivate-api', checkApiKey, async (req, res) => {
+    const { apikey } = req.query; // Get apikey from query parameter
+    if (!apikey) {
+        return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Parameter apikey diperlukan." });
+    }
+
+    try {
+        const result = await reactivateKey(apikey); // Use the reactivateKey function from db.js
+        if (result) {
+            return res.json({ creator: "WANZOFC TECH", result: true, message: "API key berhasil diaktifkan kembali." });
+        } else {
+            return res.status(404).json({ creator: "WANZOFC TECH", result: false, message: "API key tidak ditemukan." });
+        }
+    } catch (error) {
+        console.error("Gagal mengaktifkan kembali API key:", error);
+        return res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Terjadi kesalahan server saat mengaktifkan kembali API key." });
     }
 });
 
