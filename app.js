@@ -8,21 +8,16 @@ const passport = require('passport');
 const flash = require('connect-flash');
 const MemoryStore = require('memorystore')(session);
 const compression = require('compression');
-const path = require('path'); // Tambahkan ini!
+const path = require('path');
 
 const apiRouters = require('./routes/api');
 const userRouters = require('./routes/users');
 
 const { isAuthenticated } = require('./lib/auth');
 const { connectMongoDb } = require('./database/connect');
-const { getApikey } = require('./database/db'); // Pastikan path ini benar
+const { getApikey } = require('./database/db');
 
-// const { port } = require('./lib/settings'); // Hapus baris ini
-
-// const PORT = process.env.PORT || port; // Hapus baris ini
-
-const PORT = process.env.PORT || 3000; // Ganti dengan ini
-
+const PORT = process.env.PORT || 3000;
 
 connectMongoDb();
 
@@ -40,7 +35,7 @@ app.set('view engine', 'ejs');
 app.use(expressLayout);
 app.use(express.static('public'));
 
-// Konfigurasi direktori views (Pastikan ini benar!)
+// Konfigurasi direktori views
 app.set('views', path.join(__dirname, 'views'));
 
 app.use(session({
@@ -70,6 +65,22 @@ app.use(function (req, res, next) {
     next();
 })
 
+// Data API Key (Contoh - Ganti dengan data dari database Anda)
+const apiKeys = [
+    {
+        name: "API Key low",
+        description: "Cocok untuk proyek kecil.",
+        price: "Rp 5.000",
+        features: ["5.000 panggilan API/bulan", "Dukungan komunitas"]
+    },
+    {
+        name: "API Key standar",
+        description: "Untuk bisnis yang berkembang.",
+        price: "Rp 10.000",
+        features: ["10.000 panggilan API/bulan", "Dukungan email prioritas"]
+    }
+];
+
 app.get('/', (req, res) => {
     res.render('index', {
         layout: 'layouts/main'
@@ -87,55 +98,39 @@ app.get('/docs', isAuthenticated, async (req, res) => {
         });
     } catch (error) {
         console.error("Error fetching API key:", error);
-        res.locals.error_msg = "Error fetching API key. Please try again."; // Set an error message
-        res.redirect('/users/login'); // Redirect to login or an error page
+        res.locals.error_msg = "Error fetching API key. Please try again.";
+        res.redirect('/users/login');
     }
 });
 
 // Rute untuk Halaman Harga
 app.get('/price', isAuthenticated, async (req, res) => {
     try {
-        // Periksa apakah pengguna terotentikasi dan memiliki username
         const username = req.user ? (req.user.username || req.user.id) : 'Guest';
-
-        // Ambil apikey di sini!
         let getkey = await getApikey(req.user.id);
-        let { apikey } = getkey; // Ekstrak apikey dari objek yang dikembalikan
+        let { apikey } = getkey;
 
-        // Render halaman dengan data
         res.render('buyFull', {
             layout: 'layouts/main',
-            apikey: apikey, // Sekarang Anda bisa menggunakan apikey
-            username: username  // Kirim variabel username
+            apikey: apikey,
+            username: username
         });
     } catch (error) {
         console.error("Kesalahan saat merender /price:", error);
         res.locals.error_msg = "Kesalahan saat memuat halaman harga. Silakan coba lagi.";
-        res.redirect('/'); // Alihkan ke halaman beranda atau halaman kesalahan
+        res.redirect('/');
     }
 });
 
 // Rute untuk Halaman Premium
-app.get('/premium', isAuthenticated, async (req, res) => {
-    try {
-        // Periksa apakah pengguna terotentikasi dan memiliki username
-        const username = req.user ? (req.user.username || req.user.id) : 'Guest';
 
-        // Ambil apikey di sini!
-        let getkey = await getApikey(req.user.id);
-        let { apikey } = getkey; // Ekstrak apikey dari objek yang dikembalikan
 
-        // Render halaman dengan data
-        res.render('buyFull', {
-            layout: 'layouts/main',
-            apikey: apikey, // Sekarang Anda bisa menggunakan apikey
-            username: username  // Kirim variabel username
-        });
-    } catch (error) {
-        console.error("Kesalahan saat merender /premium:", error);
-        res.locals.error_msg = "Kesalahan saat memuat halaman premium. Silakan coba lagi.";
-        res.redirect('/'); // Alihkan ke halaman beranda atau halaman kesalahan
-    }
+// Rute untuk Halaman Daftar Produk API Key
+app.get('/princing', (req, res) => {
+    res.render('buyFull', {
+        layout: 'layouts/main',
+        apiKeys: apiKeys  // Kirim data API Key ke template
+    });
 });
 
 app.use('/api', apiRouters);
@@ -144,7 +139,7 @@ app.use('/users', userRouters);
 // Middleware untuk menangani rute yang tidak ditemukan (404)
 app.use(function (req, res, next) {
     res.status(404).render('notfound', {
-        layout: 'layouts/main' // Atau layout yang sesuai
+        layout: 'layouts/main'
     });
 });
 
