@@ -138,9 +138,7 @@ app.use('/users', userRouters);
 
 // Middleware untuk menangani rute yang tidak ditemukan (404)
 app.use(function (req, res, next) {
-    res.status(404).render('notfound', {
-        layout: 'layouts/main'
-    });
+    res.status(404).sendFile(path.join(__dirname, '404.html')); // Kirim file 404.html
 });
 
 app.set('json spaces', 4);
