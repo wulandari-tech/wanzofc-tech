@@ -18,26 +18,30 @@
                             </tr>
                         </thead>
                         <tbody style="text-align: center !important;">
-                            <% apikey.forEach(key => { %>
+                            <% if (apikey) { %>  <!-- Periksa apakah apikey ada -->
                             <tr>
-                                <td><%= key.apikey %></td>
-                                <td><%= key.expiry_date %></td>
+                                <td><%= apikey.apikey %></td> <!-- Akses properti objek langsung -->
+                                <td><%= apikey.expiry_date %></td>
                                 <td>
-                                    <% if (key.status === 'active') { %>
+                                    <% if (apikey.status === 'active') { %>
                                         <span style="color: green;">Active</span>
                                     <% } else { %>
                                         <span style="color: red;">Expired</span>
                                     <% } %>
                                 </td>
                                 <td>
-                                    <% if (key.status === 'active') { %>
-                                        <button class="button button-secondary" onclick="deactivateApiKey('<%= key.apikey %>')">Deactivate</button>
+                                    <% if (apikey.status === 'active') { %>
+                                        <button class="button button-secondary" onclick="deactivateApiKey('<%= apikey.apikey %>')">Deactivate</button>
                                     <% } else { %>
-                                        <button class="button button-primary" onclick="reactivateApiKey('<%= key.apikey %>')">Reactivate</button>
+                                        <button class="button button-primary" onclick="reactivateApiKey('<%= apikey.apikey %>')">Reactivate</button>
                                     <% } %>
                                 </td>
                             </tr>
-                            <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="4">Tidak ada API key yang ditemukan.</td>
+                                </tr>
+                            <% } %>
                         </tbody>
                     </table>
                 </div>
