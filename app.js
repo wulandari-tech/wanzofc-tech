@@ -8,6 +8,7 @@ const passport = require('passport');
 const flash = require('connect-flash');
 const MemoryStore = require('memorystore')(session);
 const compression = require('compression');
+const path = require('path'); // Tambahkan ini!
 
 const apiRouters = require('./routes/api');
 const userRouters = require('./routes/users');
@@ -34,6 +35,9 @@ app.use(limiter);
 app.set('view engine', 'ejs');
 app.use(expressLayout);
 app.use(express.static('public'));
+
+// Konfigurasi direktori views (Pastikan ini benar!)
+app.set('views', path.join(__dirname, 'views'));
 
 app.use(session({
     secret: 'secret',
@@ -133,12 +137,11 @@ app.get('/premium', isAuthenticated, async (req, res) => {
 app.use('/api', apiRouters);
 app.use('/users', userRouters);
 
+// Middleware untuk menangani rute yang tidak ditemukan (404)
 app.use(function (req, res, next) {
-    if (res.statusCode == '200') {
-        res.render('notfound', {
-            layout: 'layouts/main'
-        });
-    }
+    res.status(404).render('notfound', {
+        layout: 'layouts/main' // Atau layout yang sesuai
+    });
 });
 
 app.set('json spaces', 4);
