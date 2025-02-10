@@ -743,6 +743,66 @@ body[data-aos-duration='2450'] [data-aos] {
   transition-duration: 2.45s;
 }
 
+[data-aos][data-aos][data-aos-delay='2250'],
+body[data-aos-delay='2250'] [data-aos] {
+  transition-delay: 0;
+}
+
+[data-aos][data-aos][data-aos-delay='2250'].aos-animate,
+body[data-aos-delay='2250'] [data-aos].aos-animate {
+  transition-delay: 2.25s;
+}
+
+[data-aos][data-aos][data-aos-duration='2300'],
+body[data-aos-duration='2300'] [data-aos] {
+  transition-duration: 2.3s;
+}
+
+[data-aos][data-aos][data-aos-delay='2300'],
+body[data-aos-delay='2300'] [data-aos] {
+  transition-delay: 0;
+}
+
+[data-aos][data-aos][data-aos-delay='2300'].aos-animate,
+body[data-aos-delay='2300'] [data-aos].aos-animate {
+  transition-delay: 2.3s;
+}
+
+[data-aos][data-aos][data-aos-duration='2350'],
+body[data-aos-duration='2350'] [data-aos] {
+  transition-duration: 2.35s;
+}
+
+[data-aos][data-aos][data-aos-delay='2350'],
+body[data-aos-delay='2350'] [data-aos] {
+  transition-delay: 0;
+}
+
+[data-aos][data-aos][data-aos-delay='2350'].aos-animate,
+body[data-aos-delay='2350'] [data-aos].aos-animate {
+  transition-delay: 2.35s;
+}
+
+[data-aos][data-aos][data-aos-duration='2400'],
+body[data-aos-duration='2400'] [data-aos] {
+  transition-duration: 2.4s;
+}
+
+[data-aos][data-aos][data-aos-delay='2400'],
+body[data-aos-delay='2400'] [data-aos] {
+  transition-delay: 0;
+}
+
+[data-aos][data-aos][data-aos-delay='2400'].aos-animate,
+body[data-aos-delay='2400'] [data-aos].aos-animate {
+  transition-delay: 2.4s;
+}
+
+[data-aos][data-aos][data-aos-duration='2450'],
+body[data-aos-duration='2450'] [data-aos] {
+  transition-duration: 2.45s;
+}
+
 [data-aos][data-aos][data-aos-delay='2450'],
 body[data-aos-delay='2450'] [data-aos] {
   transition-delay: 0;
@@ -1427,8 +1487,7 @@ body[data-aos-easing=ease-in-out-quart] [data-aos] {
   bottom: 0;
   left: 0;
   white-space: nowrap;
-  background: #ffffff;
-  background: white;
+  background: #BC13FE; /* Warna Ungu Neon */
   outline: none !important;
   opacity: 0;
   -webkit-transition: opacity 0.3s ease;
@@ -1670,4 +1729,4 @@ body[data-aos-easing=ease-in-out-quart] [data-aos] {
 }
 
 
-/*# sourceMappingURL=vendor.css.map */
+/*# Source mapping url=vendor.css.map */
