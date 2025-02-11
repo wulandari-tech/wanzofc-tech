@@ -1195,6 +1195,48 @@ router.get('/search/xnxx', checkApiKey, async (req, res) => {
         console.log('XNXX Search request completed.');
     }
 });
+router.get('/r/cecan/china', checkApiKey, async (req, res) => {
+    try {
+        const { data } = await axios.get("https://api.siputzx.my.id/api/r/cecan/china");
+        res.json({ creator: "WANZOFC TECH", result: true, message: "Random Chinese Cecan Image", data: data });
+    } catch (error) {
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil gambar Cecan China." });
+    } finally {
+        console.log('Random Chinese Cecan Image request completed.');
+    }
+});
+
+router.get('/d/spotify', checkApiKey, async (req, res) => {
+    const url = req.query.url;
+    if (!url) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Tambahkan parameter 'url'." });
+
+    try {
+        const { data } = await axios.get(`https://api.siputzx.my.id/api/d/spotify?url=${encodeURIComponent(url)}`);
+        res.json({ creator: "WANZOFC TECH", result: true, message: "Spotify Downloader", data: data });
+    } catch {
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Spotify Downloader bermasalah." });
+    } finally {
+        console.log('Spotify Downloader request completed.');
+    }
+});
+
+router.get('/tools/ngl', checkApiKey, async (req, res) => {
+    const link = req.query.link;
+    const text = req.query.text;
+
+    if (!link || !text) {
+        return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Tambahkan parameter 'link' dan 'text'." });
+    }
+
+    try {
+        const { data } = await axios.get(`https://api.siputzx.my.id/api/tools/ngl?link=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`);
+        res.json({ creator: "WANZOFC TECH", result: true, message: "NGL Tool", data: data });
+    } catch {
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "NGL Tool bermasalah." });
+    } finally {
+        console.log('NGL Tool request completed.');
+    }
+});
 
 // API Endpoints to Deactivate and Reactivate API Keys
 router.post('/deactivate-api', checkApiKey, async (req, res) => {
