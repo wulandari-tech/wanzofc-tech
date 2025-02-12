@@ -1294,25 +1294,20 @@ router.get('/tools/ngl', checkApiKey, async (req, res) => {
         console.log('NGL Tool request completed.');
     }
 });
+
 router.get('/api/e/dana', checkApiKey, async (req, res) => {
     try {
-        // Ambil data dari API eksternal
-        const response = await fetch('https://apis.xyrezz.online-server.biz.id/api/okeconnect/dana');
-        const data = await response.json();
+        // Lakukan permintaan ke API eksternal menggunakan axios
+        const response = await axios.get('https://apis.xyrezz.online-server.biz.id/api/okeconnect/dana');
 
-        // Periksa status respons dari API eksternal
-        if (response.status !== 200) {
-            return res.status(response.status).json({ 
-                creator: "WANZOFC TECH", 
-                result: false, 
-                message: "Gagal mengambil data dari API Dana: " + (data.message || response.statusText) 
-            });
-        }
+        // Ambil data dari respons
+        const data = response.data;
 
         // Kirim data yang diterima sebagai respons
         res.json({ 
             creator: "WANZOFC TECH", 
             result: true, 
+            message: "Data dari API Dana berhasil diambil.", 
             data: data 
         });
 
@@ -1321,8 +1316,10 @@ router.get('/api/e/dana', checkApiKey, async (req, res) => {
         res.status(500).json({ 
             creator: "WANZOFC TECH", 
             result: false, 
-            message: "Terjadi kesalahan server saat memanggil API Dana." 
+            message: "Terjadi kesalahan server saat memanggil API Dana: " + error.message 
         });
+    } finally {
+        console.log('Permintaan ke API Dana selesai.');
     }
 });
 router.get('/stalk/roblox', checkApiKey, async (req, res) => {
