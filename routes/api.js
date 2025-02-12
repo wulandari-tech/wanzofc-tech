@@ -1294,7 +1294,7 @@ router.get('/tools/ngl', checkApiKey, async (req, res) => {
         console.log('NGL Tool request completed.');
     }
 });
-router.get('/api/dana', checkApiKey, async (req, res) => {
+router.get('/api/e/dana', checkApiKey, async (req, res) => {
     try {
         // Ambil data dari API eksternal
         const response = await fetch('https://apis.xyrezz.online-server.biz.id/api/okeconnect/dana');
