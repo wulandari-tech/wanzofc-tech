@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
 const path = require('path');
+const cloudscraper = require('cloudscraper'); 
 const { cekKey, updateKeyExpiry, deactivateKey, reactivateKey } = require('../database/db'); // Adjust path as needed
 const { youtubePlay, youtubeMp4, youtubeMp3 } = require('../controllers/yt'); // Adjust path as needed
 const { cakLontong, bijak, quotes, fakta, ptl, motivasi } = require('../controllers/randomtext'); // Adjust path as needed
