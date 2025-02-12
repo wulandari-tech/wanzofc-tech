@@ -38,6 +38,62 @@ const checkApiKey = async (req, res, next) => {
     }
 };
 
+async function kanyutkanyut(url, method = "GET", payload = null) {
+    try {
+        const response = method === "POST"
+            ? await cloudscraper.post(url, { json: payload })
+            : await cloudscraper.get(url);
+
+        return JSON.parse(response);
+    } catch (error) {
+        console.error(`Cloudscraper ERROR dalam method ${method}:`, error.message);
+        return { error: error.message }; // Kembalikan informasi kesalahan dalam format objek
+    }
+}
+
+// Fungsi-fungsi untuk mengakses API Roblox (dipanggil di dalam handler endpoint)
+async function getUserInfo(userId) { return kanyutkanyut(`https://users.roblox.com/v1/users/${userId}`); }
+async function getUserGroups(userId) { return kanyutkanyut(`https://groups.roblox.com/v1/users/${userId}/groups/roles`); }
+async function getUserBadges(userId) { return kanyutkanyut(`https://badges.roblox.com/v1/users/${userId}/badges`); }
+async function getUserGames(userId) { return kanyutkanyut(`https://games.roblox.com/v2/users/${userId}/games`); }
+async function getUserAvatar(userId) {
+    return kanyutkanyut(
+        `https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=720x720&format=Png&isCircular=false`
+    );
+}
+async function getUsernameHistory(userId) {
+    return kanyutkanyut(`https://users.roblox.com/v1/users/${userId}/username-history`);
+}
+async function getUserFriends(userId) { return kanyutkanyut(`https://friends.roblox.com/v1/users/${userId}/friends`); }
+async function getUserFriendCount(userId) {
+    return kanyutkanyut(`https://friends.roblox.com/v1/users/${userId}/friends/count`);
+}
+async function getUserFollowers(userId) {
+    return kanyutkanyut(`https://friends.roblox.com/v1/users/${userId}/followers`);
+}
+async function getUserFollowing(userId) {
+    return kanyutkanyut(`https://friends.roblox.com/v1/users/${userId}/followings`);
+}
+async function getUserCreatedAssets(userId) {
+    return kanyutkanyut(`https://catalog.roblox.com/v1/search/items?CreatorId=${userId}&CreatorType=User`);
+}
+async function robloxStalk(userId) {
+    const results = {
+        userInfo: await getUserInfo(userId),
+        userGroups: await getUserGroups(userId),
+        userBadges: await getUserBadges(userId),
+        userGames: await getUserGames(userId),
+        userAvatar: await getUserAvatar(userId),
+        usernameHistory: await getUsernameHistory(userId),
+        userFriends: await getUserFriends(userId),
+        userFriendCount: await getUserFriendCount(userId),
+        userFollowers: await getUserFollowers(userId),
+        userFollowing: await getUserFollowing(userId),
+        userCreatedAssets: await getUserCreatedAssets(userId),
+    };
+
+    return results;
+                            }
 // API Endpoints (Adapting from your provided server (5).js and api.js)
 // ----------------------------------------------------------------------
 
@@ -1235,6 +1291,24 @@ router.get('/tools/ngl', checkApiKey, async (req, res) => {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "NGL Tool bermasalah." });
     } finally {
         console.log('NGL Tool request completed.');
+    }
+});
+
+router.get('/stalk/roblox', checkApiKey, async (req, res) => {
+    const userId = req.query.userId;
+
+    if (!userId) {
+        return res.status(400).json(formatResponse("WANZOFC TECH", false, "ID Pengguna Roblox diperlukan. Parameter 'userId' harus ditambahkan."));
+    }
+
+    try {
+        const data = await robloxStalk(userId);
+        res.json(formatResponse("WANZOFC TECH", true, "Informasi Roblox Stalk", data));
+    } catch (error) {
+        console.error("Kesalahan saat melakukan Roblox Stalk:", error);
+        res.status(500).json(formatResponse("WANZOFC TECH", false, "Gagal melakukan Roblox Stalk. Coba lagi nanti."));
+    } finally {
+        console.log(`Roblox Stalk selesai untuk userId: ${userId}`);
     }
 });
 
