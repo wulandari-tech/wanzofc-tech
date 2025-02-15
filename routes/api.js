@@ -1322,6 +1322,51 @@ router.get('/api/e/dana', checkApiKey, async (req, res) => {
         console.log('Permintaan ke API Dana selesai.');
     }
 });
+// Reddit Endpoints
+router.get('/s/reddit', checkApiKey, async (req, res) => {
+    const query = req.query.q;
+    if (!query) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter q!" });
+
+    try {
+        const { data } = await axios.get(`https://www.reddit.com/search.json?q=${encodeURIComponent(query)}`);
+        res.json({ creator: "WANZOFC TECH", result: true, message: "Hasil pencarian Reddit", data: data });
+    } catch (error) {
+        console.error("Reddit Search error:", error); // Log errornya
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data dari Reddit.", error: error.message }); // Tambahkan detail error
+    } finally {
+        console.log('Reddit Search request completed.');
+    }
+});
+
+router.get('/stalk/reddit', checkApiKey, async (req, res) => {
+    const username = req.query.username;
+    if (!username) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter username!" });
+
+    try {
+        const { data } = await axios.get(`https://www.reddit.com/user/${encodeURIComponent(username)}/submitted.json`);
+        res.json({ creator: "WANZOFC TECH", result: true, message: "Reddit User Stalk", data: data });
+    } catch (error) {
+        console.error("Reddit User Stalk error:", error); // Log errornya
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data dari Reddit User.", error: error.message }); // Tambahkan detail error
+    } finally {
+        console.log('Reddit User Stalk request completed.');
+    }
+});
+
+router.get('/d/reddit', checkApiKey, async (req, res) => {
+    const url = req.query.url;
+    if (!url) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter url!" });
+
+    try {
+        const { data } = await axios.get(`${url}.json`);
+        res.json({ creator: "WANZOFC TECH", result: true, message: "Reddit Downloader", data: data });
+    } catch (error) {
+        console.error("Reddit Downloader error:", error); // Log errornya
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendownload data dari Reddit.", error: error.message }); // Tambahkan detail error
+    } finally {
+        console.log('Reddit Downloader request completed.');
+    }
+});
 router.get('/stalk/roblox', checkApiKey, async (req, res) => {
     const userId = req.query.userId;
 
