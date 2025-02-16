@@ -1159,13 +1159,34 @@ router.get('/primbon/zodiak', checkApiKey, async (req, res) => {
 
 router.get('/ai/metaai', checkApiKey, async (req, res) => {
     try {
-        const query = req.query.query;
-        if (!query) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter query!" });
+        const { prompt, query } = req.query;
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/metaai?query=${encodeURIComponent(query)}`);
+        // Validasi parameter
+        if (!prompt || !query) {
+            return res.status(400).json({ 
+                creator: "WANZOFC TECH", 
+                result: false, 
+                message: "Harap masukkan parameter prompt dan query!" 
+            });
+        }
+
+        // Kirim prompt dan query ke API eksternal
+        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/metaai`, {
+            params: {
+                prompt: prompt, // Contoh: "kamu adalah WANZOFC"
+                query: query     // Contoh: "halo"
+            }
+        });
+
+        // Kirim respons ke client
         res.json(data);
-    } catch {
-        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data Meta AI." });
+    } catch (error) {
+        console.error('Error fetching Meta AI data:', error);
+        res.status(500).json({ 
+            creator: "WANZOFC TECH", 
+            result: false, 
+            message: "Gagal mengambil data Meta AI." 
+        });
     } finally {
         console.log('Meta AI request completed.');
     }
