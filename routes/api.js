@@ -1025,15 +1025,26 @@ router.get('/stalk/npm', checkApiKey, cache('1 hour'), async (req, res) => {
     }
 });
 
-router.get('/ai/stabilityai', checkApiKey, cache('5 minutes'), async (req, res) => {
+
+router.get('/ai/stabilityai', checkApiKey, async (req, res) => {
     try {
         const prompt = req.query.prompt;
         if (!prompt) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter prompt!" });
 
-        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/stabilityai?prompt=${encodeURIComponent(prompt)}`);
-        res.json({ creator: "WANZOFC TECH", result: true, message: "Gambar dari Stability AI", data: data });
-    } catch {
-        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan gambar dari Stability AI." });
+        const response = await axios.get(`https://api.siputzx.my.id/api/ai/stabilityai?prompt=${encodeURIComponent(prompt)}`, {
+            responseType: 'arraybuffer' // Penting: minta respons sebagai arraybuffer
+        });
+
+        const imageBuffer = Buffer.from(response.data, 'binary'); // Convert data to Buffer
+
+        // Tetapkan Content-Type berdasarkan jenis gambar (sesuaikan jika perlu)
+        res.setHeader('Content-Type', 'image/jpeg'); // Asumsi: gambar adalah JPEG
+        // Opsi lain: 'image/png', 'image/gif', dll. Tergantung jenis gambar yang dikembalikan API.
+
+        res.send(imageBuffer); // Kirim data gambar sebagai respons
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan gambar dari Stability AI.", error: error.message });
     } finally {
         console.log('Gambar dari Stability AI request completed.');
     }
@@ -1525,6 +1536,19 @@ router.get('/ai/gpt4o', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const { data } = await axiosInstance.get(`https://vapis.my.id/api/gpt4o?q=${encodeURIComponent(query)}`);
         res.json({ creator: "WANZOFC TECH", result: true, data });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: 'API Error' });
+    }
+});
+router.get('/ai/gpt4', checkApiKey, async (req, res) => {
+    const ask = req.query.ask;
+    if (!ask) return res.status(400).json({ message: 'Ask parameter is required' });
+
+    try {
+        const { data } = await axios.get(`https://fastrestapis.fasturl.cloud/aillm/gpt-4?ask=${encodeURIComponent(ask)}`);
+        const now = new Date();
+        res.json({ creator: "WANZOFC TECH", result: true, date: now, data });
     } catch (error) {
         console.error(error);
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: 'API Error' });
