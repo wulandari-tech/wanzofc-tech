@@ -886,12 +886,21 @@ router.get('/ai/gpt3', checkApiKey, cache('5 minutes'), async (req, res) => {
     }
 });
 
-router.get('/r/waifu', checkApiKey, cache('1 hour'), async (req, res) => {
+router.get('/r/waifu', checkApiKey, async (req, res) => {
     try {
-        const { data } = await axiosInstance.get("https://api.siputzx.my.id/api/r/waifu");
-        res.json({ creator: "WANZOFC TECH", result: true, message: "Random Waifu Image", data: data });
-    } catch {
-        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan waifu random." });
+        const response = await axios.get("https://api.siputzx.my.id/api/r/waifu", {
+            responseType: 'arraybuffer' // Penting: minta respons sebagai arraybuffer
+        });
+
+        const imageBuffer = Buffer.from(response.data, 'binary');
+
+        // Tetapkan Content-Type berdasarkan jenis gambar (sesuaikan jika perlu)
+        res.setHeader('Content-Type', 'image/jpeg'); // Asumsi: JPEG. PERIKSA JENIS GAMBAR YANG BENAR
+        res.send(imageBuffer);
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan waifu random.", error: error.message });
     } finally {
         console.log('Random Waifu Image request completed.');
     }
@@ -983,19 +992,31 @@ router.get('/ai/qwq-32b-preview', checkApiKey, cache('5 minutes'), async (req, r
     }
 });
 
-router.get('/s/pinterest', checkApiKey, cache('1 hour'), async (req, res) => {
+router.get('/s/pinterest', checkApiKey, async (req, res) => {
     try {
         const query = req.query.query;
         if (!query) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter query!" });
 
-        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/s/pinterest?query=${encodeURIComponent(query)}`);
-        res.json({ creator: "WANZOFC TECH", result: true, message: "Hasil pencarian Pinterest", data: data });
-    } catch {
-        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan hasil dari Pinterest." });
+        const response = await axios.get(`https://api.siputzx.my.id/api/s/pinterest?query=${encodeURIComponent(query)}`, {
+            responseType: 'arraybuffer' // Penting: minta respons sebagai arraybuffer
+        });
+
+        const imageBuffer = Buffer.from(response.data, 'binary');
+
+        // Tetapkan Content-Type berdasarkan jenis gambar (sesuaikan jika perlu)
+        res.setHeader('Content-Type', 'image/jpeg'); // Asumsi: JPEG. PERIKSA JENIS GAMBAR YANG BENAR
+        res.send(imageBuffer);
+
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan hasil dari Pinterest.", error: error.message });
     } finally {
         console.log('Hasil pencarian Pinterest request completed.');
     }
 });
+
+// Waifu Endpoint (Menampilkan gambar langsung)
 
 router.get('/s/soundcloud', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
@@ -1541,17 +1562,5 @@ router.get('/ai/gpt4o', checkApiKey, cache('5 minutes'), async (req, res) => {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: 'API Error' });
     }
 });
-router.get('/ai/gpt4', checkApiKey, async (req, res) => {
-    const ask = req.query.ask;
-    if (!ask) return res.status(400).json({ message: 'Ask parameter is required' });
 
-    try {
-        const { data } = await axios.get(`https://fastrestapis.fasturl.cloud/aillm/gpt-4?ask=${encodeURIComponent(ask)}`);
-        const now = new Date();
-        res.json({ creator: "WANZOFC TECH", result: true, date: now, data });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: 'API Error' });
-    }
-});
 module.exports = router;
