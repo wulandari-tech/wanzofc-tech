@@ -1462,4 +1462,30 @@ router.get('/kuis/islami', checkApiKey, async (req, res) => {
     }
 });
 
+
+router.get('/ai/gpt4omini', checkApiKey, async (req, res) => {
+    const query = req.query.q;
+    if (!query) return res.status(400).json({ message: 'Query parameter (q) is required' });
+
+    try {
+        const { data } = await axios.get(`https://vapis.my.id/api/gpt4omini?q=${encodeURIComponent(query)}`);
+        res.json({ creator: "WANZOFC TECH", result: true, data });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: 'API Error' });
+    }
+});
+
+router.get('/ai/gpt4o', checkApiKey, async (req, res) => {
+    const query = req.query.q;
+    if (!query) return res.status(400).json({ message: 'Query parameter (q) is required' });
+
+    try {
+        const { data } = await axios.get(`https://vapis.my.id/api/gpt4o?q=${encodeURIComponent(query)}`);
+        res.json({ creator: "WANZOFC TECH", result: true, data });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: 'API Error' });
+    }
+});
 module.exports = router;
