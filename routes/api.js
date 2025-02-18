@@ -1444,5 +1444,22 @@ router.post('/reactivate-api', checkApiKey, async (req, res) => {
         return res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Terjadi kesalahan server saat mengaktifkan kembali API key." });
     }
 });
+router.get('/kuis/islami/random', checkApiKey, async (req, res) => {
+    try {
+        const { data } = await axios.get('https://kuis-islami-api.vercel.app/api/random');
+        res.json({ creator: "WANZOFC TECH", result: true, data });
+    } catch {
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: 'API Error' });
+    }
+});
+
+router.get('/kuis/islami', checkApiKey, async (req, res) => {
+    try {
+        const { data } = await axios.get('https://kuis-islami-api.vercel.app/');
+        res.json({ creator: "WANZOFC TECH", result: true, data });
+    } catch {
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: 'API Error' });
+    }
+});
 
 module.exports = router;
