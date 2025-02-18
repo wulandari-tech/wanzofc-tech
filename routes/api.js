@@ -2,22 +2,24 @@ const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
 const path = require('path');
-const cloudscraper = require('cloudscraper'); 
-const { cekKey, updateKeyExpiry, deactivateKey, reactivateKey } = require('../database/db'); // Adjust path as needed
-const { youtubePlay, youtubeMp4, youtubeMp3 } = require('../controllers/yt'); // Adjust path as needed
-const { cakLontong, bijak, quotes, fakta, ptl, motivasi } = require('../controllers/randomtext'); // Adjust path as needed
-const { geminiAi } = require('../ai'); // Adjust path as needed
+const cloudscraper = require('cloudscraper');
+const { cekKey, updateKeyExpiry, deactivateKey, reactivateKey } = require('../database/db');
+const { youtubePlay, youtubeMp4, youtubeMp3 } = require('../controllers/yt');
+const { cakLontong, bijak, quotes, fakta, ptl, motivasi } = require('../controllers/randomtext');
+const { geminiAi } = require('../ai');
+const compression = require('compression');
+const redis = require('redis');
+const apicache = require('apicache');
+const http = require('http');
+const https = require('https');
+require('dotenv').config();
 
-const router = express.Router(); // Create a router instance
+const router = express.Router();
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
 
-// API Keys (Consider moving these to environment variables)
-const GOOGLE_API_KEY = "AIzaSyCuV73IqmbO25dYuMIMDrmmIwVowNWEUns";
-const WEATHER_API_KEY = "e4517bde90e743f0b99112303252001";
-
-// Helper function to format paragraphs
 const formatParagraph = (text) => text ? text.replace(/\.\s+/g, ".\n\n") : "Tidak ada jawaban.";
 
-// Middleware to check API Key (apply where needed)
 const checkApiKey = async (req, res, next) => {
     const apikey = req.query.apikey;
 
@@ -31,13 +33,21 @@ const checkApiKey = async (req, res, next) => {
             return res.status(403).json({ status: 403, message: `API Key ${apikey} not found or invalid!` });
         }
 
-        req.apikeyInfo = check; // Attach API key info to the request object (optional)
-        next(); // Proceed to the next middleware or route handler
+        req.apikeyInfo = check;
+        next();
     } catch (error) {
         console.error("API Key check error:", error);
         return res.status(500).json({ status: 500, message: "Internal Server Error during API key check" });
     }
 };
+
+const httpAgent = new http.Agent({ keepAlive: true });
+const httpsAgent = new https.Agent({ keepAlive: true });
+
+const axiosInstance = axios.create({
+    httpAgent: httpAgent,
+    httpsAgent: httpsAgent
+});
 
 async function kanyutkanyut(url, method = "GET", payload = null) {
     try {
@@ -48,11 +58,10 @@ async function kanyutkanyut(url, method = "GET", payload = null) {
         return JSON.parse(response);
     } catch (error) {
         console.error(`Cloudscraper ERROR dalam method ${method}:`, error.message);
-        return { error: error.message }; // Kembalikan informasi kesalahan dalam format objek
+        return { error: error.message };
     }
 }
 
-// Fungsi-fungsi untuk mengakses API Roblox (dipanggil di dalam handler endpoint)
 async function getUserInfo(userId) { return kanyutkanyut(`https://users.roblox.com/v1/users/${userId}`); }
 async function getUserGroups(userId) { return kanyutkanyut(`https://groups.roblox.com/v1/users/${userId}/groups/roles`); }
 async function getUserBadges(userId) { return kanyutkanyut(`https://badges.roblox.com/v1/users/${userId}/badges`); }
@@ -94,11 +103,48 @@ async function robloxStalk(userId) {
     };
 
     return results;
-                            }
-// API Endpoints (Adapting from your provided server (5).js and api.js)
-// ----------------------------------------------------------------------
+}
 
-// HTML serving routes (if you want to include these in the module)
+router.use(compression());
+let cache = apicache.middleware;
+const redisClient = redis.createClient();
+
+redisClient.on('error', err => console.log('Redis Client Error', err));
+
+redisClient.connect().then(() => {
+    console.log('Connected to Redis');
+}).catch(err => {
+    console.log('Could not connect to Redis', err);
+});
+const cacheWithRedis = async (req, res, next) => {
+    const { url } = req;
+    try {
+        const cachedData = await redisClient.get(url);
+        if (cachedData) {
+            const result = JSON.parse(cachedData);
+            res.status(200).json(result);
+        } else {
+            next();
+        }
+    } catch (error) {
+        console.error("Redis cache error:", error);
+        next();
+    }
+}
+const setCacheWithRedis = async (req, res, next) => {
+    const { url } = req;
+    try {
+        await redisClient.set(url, JSON.stringify(res.locals.responseData), {
+            EX: 30,
+            NX: true
+        });
+        next();
+    } catch (error) {
+        console.error("Redis set cache error:", error);
+        next();
+    }
+}
+
 router.get("/kebijakan", (req, res) => {
     res.sendFile(path.join(__dirname, "kebijakan.html"));
 });
@@ -115,15 +161,14 @@ router.get('/daftar', (req, res) => {
     res.sendFile(path.join(__dirname, 'login.html'));
 });
 
-// API Endpoints to Deactivate and Reactivate API Keys
 router.post('/deactivate-api', checkApiKey, async (req, res) => {
-    const { apikey } = req.query; // Get apikey from query parameter
+    const { apikey } = req.query;
     if (!apikey) {
         return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Parameter apikey diperlukan." });
     }
 
     try {
-        const result = await deactivateKey(apikey); // Use the deactivateKey function from db.js
+        const result = await deactivateKey(apikey);
         if (result) {
             return res.json({ creator: "WANZOFC TECH", result: true, message: "API key berhasil dinonaktifkan." });
         } else {
@@ -136,13 +181,13 @@ router.post('/deactivate-api', checkApiKey, async (req, res) => {
 });
 
 router.post('/reactivate-api', checkApiKey, async (req, res) => {
-    const { apikey } = req.query; // Get apikey from query parameter
+    const { apikey } = req.query;
     if (!apikey) {
         return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Parameter apikey diperlukan." });
     }
 
     try {
-        const result = await reactivateKey(apikey); // Use the reactivateKey function from db.js
+        const result = await reactivateKey(apikey);
         if (result) {
             return res.json({ creator: "WANZOFC TECH", result: true, message: "API key berhasil diaktifkan kembali." });
         } else {
@@ -154,11 +199,10 @@ router.post('/reactivate-api', checkApiKey, async (req, res) => {
     }
 });
 
-// AI Endpoints (adapting examples, ensure API keys are handled securely)
-router.get('/ai/deepseek-chat', checkApiKey, async (req, res) => {
+router.get('/ai/deepseek-chat', checkApiKey, cache('5 minutes'), async (req, res) => {
     const query = req.query.content || "halo";
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/deepseek-llm-67b-chat?content=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/deepseek-llm-67b-chat?content=${encodeURIComponent(query)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Deepseek Chat", data: formatParagraph(data?.data) });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Deepseek Chat bermasalah." });
@@ -167,9 +211,9 @@ router.get('/ai/deepseek-chat', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/image2text', checkApiKey, async (req, res) => {
+router.get('/ai/image2text', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
-        const { data } = await axios.get("https://api.siputzx.my.id/api/ai/image2text?url=https://cataas.com/cat");
+        const { data } = await axiosInstance.get("https://api.siputzx.my.id/api/ai/image2text?url=https://cataas.com/cat");
         res.json({ creator: "WANZOFC TECH", result: true, message: "Image to Text", data: formatParagraph(data?.data) });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Image to Text bermasalah." });
@@ -178,28 +222,32 @@ router.get('/ai/image2text', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/gemini-pro', checkApiKey, async (req, res) => {
+router.get('/ai/gemini-pro', checkApiKey, cache('5 minutes'), async (req, res) => {
     const query = req.query.content || "hai";
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/gemini-pro?content=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/gemini-pro?content=${encodeURIComponent(query)}`);
         res.json
-           ({ creator: "WANZOFC TECH",
-             result: true, message: "Gemini Pro AI",
-             data: formatParagraph(data?.data) });
+            ({
+                creator: "WANZOFC TECH",
+                result: true, message: "Gemini Pro AI",
+                data: formatParagraph(data?.data)
+            });
     } catch {
         res.status(500).json
-            ({ creator: "WANZOFC TECH",
-              result: false,
-              message: "Gemini Pro bermasalah." });
+            ({
+                creator: "WANZOFC TECH",
+                result: false,
+                message: "Gemini Pro bermasalah."
+            });
     } finally {
         console.log('Gemini Pro AI request completed.');
     }
 });
 
-router.get('/ai/meta-llama', checkApiKey, async (req, res) => {
+router.get('/ai/meta-llama', checkApiKey, cache('5 minutes'), async (req, res) => {
     const query = req.query.content || "hai";
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/meta-llama-33-70B-instruct-turbo?content=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/meta-llama-33-70B-instruct-turbo?content=${encodeURIComponent(query)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Meta Llama", data: formatParagraph(data?.data) });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Meta Llama bermasalah." });
@@ -208,10 +256,10 @@ router.get('/ai/meta-llama', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/dbrx-instruct', checkApiKey, async (req, res) => {
+router.get('/ai/dbrx-instruct', checkApiKey, cache('5 minutes'), async (req, res) => {
     const query = req.query.content || "hai";
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/dbrx-instruct?content=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/dbrx-instruct?content=${encodeURIComponent(query)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "DBRX Instruct", data: formatParagraph(data?.data) });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "DBRX Instruct bermasalah." });
@@ -220,10 +268,10 @@ router.get('/ai/dbrx-instruct', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/deepseek-r1', checkApiKey, async (req, res) => {
+router.get('/ai/deepseek-r1', checkApiKey, cache('5 minutes'), async (req, res) => {
     const query = req.query.content || "hai";
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/deepseek-r1?content=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/deepseek-r1?content=${encodeURIComponent(query)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Deepseek R1", data: formatParagraph(data?.data) });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Deepseek R1 bermasalah." });
@@ -232,10 +280,10 @@ router.get('/ai/deepseek-r1', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/gita', checkApiKey, async (req, res) => {
+router.get('/gita', checkApiKey, cache('5 minutes'), async (req, res) => {
     const query = req.query.q || "hai";
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/gita?q=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/gita?q=${encodeURIComponent(query)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Gita AI", data: formatParagraph(data?.data) });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gita AI bermasalah." });
@@ -244,9 +292,9 @@ router.get('/gita', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/anime/latest', checkApiKey, async (req, res) => {
+router.get('/anime/latest', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get("https://api.siputzx.my.id/api/anime/latest");
+        const { data } = await axiosInstance.get("https://api.siputzx.my.id/api/anime/latest");
         res.json({ creator: "WANZOFC TECH", result: true, message: "Anime Terbaru", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Anime Terbaru bermasalah." });
@@ -255,12 +303,12 @@ router.get('/anime/latest', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/anime/anichin-episode', checkApiKey, async (req, res) => {
+router.get('/anime/anichin-episode', checkApiKey, cache('1 hour'), async (req, res) => {
     const url = req.query.url;
     if (!url) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Tolong tambahkan parameter 'url'." });
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/anime/anichin-episode?url=${encodeURIComponent(url)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/anime/anichin-episode?url=${encodeURIComponent(url)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Anichin Episode", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Anichin Episode bermasalah." });
@@ -269,12 +317,12 @@ router.get('/anime/anichin-episode', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/d/mediafire', checkApiKey, async (req, res) => {
+router.get('/d/mediafire', checkApiKey, cache('1 hour'), async (req, res) => {
     const url = req.query.url;
     if (!url) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Tambahkan parameter 'url'." });
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/d/mediafire?url=${encodeURIComponent(url)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/d/mediafire?url=${encodeURIComponent(url)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "MediaFire Downloader", data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "MediaFire Downloader bermasalah." });
@@ -283,9 +331,9 @@ router.get('/d/mediafire', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/r/blue-archive', checkApiKey, async (req, res) => {
+router.get('/r/blue-archive', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get("https://api.siputzx.my.id/api/r/blue-archive");
+        const { data } = await axiosInstance.get("https://api.siputzx.my.id/api/r/blue-archive");
         res.json({ creator: "WANZOFC TECH", result: true, message: "Random Blue Archive Image", data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil gambar Blue Archive." });
@@ -294,9 +342,9 @@ router.get('/r/blue-archive', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/r/quotesanime', checkApiKey, async (req, res) => {
+router.get('/r/quotesanime', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get("https://api.siputzx.my.id/api/r/quotesanime");
+        const { data } = await axiosInstance.get("https://api.siputzx.my.id/api/r/quotesanime");
         res.json({ creator: "WANZOFC TECH", result: true, message: "Random Anime Quotes", data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil quote anime." });
@@ -305,12 +353,12 @@ router.get('/r/quotesanime', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/d/tiktok', checkApiKey, async (req, res) => {
+router.get('/d/tiktok', checkApiKey, cache('1 hour'), async (req, res) => {
     const url = req.query.url;
     if (!url) return res.status(400).json({ result: false, message: "Tambahkan parameter 'url'." });
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/tiktok?url=${encodeURIComponent(url)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/tiktok?url=${encodeURIComponent(url)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "TikTok Downloader", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "TikTok Downloader bermasalah." });
@@ -319,12 +367,12 @@ router.get('/d/tiktok', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/d/igdl', checkApiKey, async (req, res) => {
+router.get('/d/igdl', checkApiKey, cache('1 hour'), async (req, res) => {
     const url = req.query.url;
     if (!url) return res.status(400).json({ result: false, message: "Tambahkan parameter 'url'." });
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/d/igdl?url=${encodeURIComponent(url)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/d/igdl?url=${encodeURIComponent(url)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Instagram Downloader", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Instagram Downloader bermasalah." });
@@ -333,12 +381,12 @@ router.get('/d/igdl', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/d/snackvideo', checkApiKey, async (req, res) => {
+router.get('/d/snackvideo', checkApiKey, cache('1 hour'), async (req, res) => {
     const url = req.query.url;
     if (!url) return res.status(400).json({ result: false, message: "Tambahkan parameter 'url'." });
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/d/snackvideo?url=${encodeURIComponent(url)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/d/snackvideo?url=${encodeURIComponent(url)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "SnackVideo Downloader", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "SnackVideo Downloader bermasalah." });
@@ -347,12 +395,12 @@ router.get('/d/snackvideo', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/d/capcut', checkApiKey, async (req, res) => {
+router.get('/d/capcut', checkApiKey, cache('1 hour'), async (req, res) => {
     const url = req.query.url;
     if (!url) return res.status(400).json({ result: false, message: "Tambahkan parameter 'url'." });
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/d/capcut?url=${encodeURIComponent(url)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/d/capcut?url=${encodeURIComponent(url)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "CapCut Template Downloader", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "CapCut Template Downloader bermasalah." });
@@ -366,7 +414,7 @@ router.get('/stalk/youtube', checkApiKey, async (req, res) => {
     if (!username) return res.status(400).json({ result: false, message: "Tambahkan parameter 'username'." });
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/stalk/youtube?username=${encodeURIComponent(username)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/stalk/youtube?username=${encodeURIComponent(username)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "YouTube Stalker", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "YouTube Stalker bermasalah." });
@@ -380,7 +428,7 @@ router.get('/stalk/tiktok', checkApiKey, async (req, res) => {
     if (!username) return res.status(400).json({ result: false, message: "Tambahkan parameter 'username'." });
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/stalk/tiktok?username=${encodeURIComponent(username)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/stalk/tiktok?username=${encodeURIComponent(username)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "TikTok Stalker", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "TikTok Stalker bermasalah." });
@@ -394,7 +442,7 @@ router.get('/stalk/github', checkApiKey, async (req, res) => {
     if (!user) return res.status(400).json({ result: false, message: "Tambahkan parameter 'user'." });
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/stalk/github?user=${encodeURIComponent(user)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/stalk/github?user=${encodeURIComponent(user)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "GitHub Stalker", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "GitHub Stalker bermasalah." });
@@ -403,13 +451,16 @@ router.get('/stalk/github', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/s/tiktok', checkApiKey, async (req, res) => {
+router.get('/s/tiktok', checkApiKey, cacheWithRedis, async (req, res) => {
     const query = req.query.query;
     if (!query) return res.status(400).json({ result: false, message: "Tambahkan parameter 'query'." });
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/s/tiktok?query=${encodeURIComponent(query)}`);
-        res.json({ creator: "WANZOFC TECH", result: true, message: "TikTok Search", data: data });
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/s/tiktok?query=${encodeURIComponent(query)}`);
+        res.locals.responseData = { creator: "WANZOFC TECH", result: true, message: "TikTok Search", data: data };
+        await setCacheWithRedis(req, res, () => {
+            res.json(res.locals.responseData);
+        });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "TikTok Search bermasalah." });
     } finally {
@@ -417,12 +468,12 @@ router.get('/s/tiktok', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/uncovr', checkApiKey, async (req, res) => {
+router.get('/ai/uncovr', checkApiKey, cache('5 minutes'), async (req, res) => {
     const content = req.query.content;
     if (!content) return res.status(400).json({ result: false, message: "Tambahkan parameter 'content'." });
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/uncovr?content=${encodeURIComponent(content)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/uncovr?content=${encodeURIComponent(content)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "AI - Uncovr Chat", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "AI - Uncovr Chat bermasalah." });
@@ -431,12 +482,12 @@ router.get('/ai/uncovr', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/wanzofc', checkApiKey, async (req, res) => {
+router.get('/ai/wanzofc', checkApiKey, cache('5 minutes'), async (req, res) => {
     const text = req.query.text;
     if (!text) return res.status(400).json({ result: false, message: "Tambahkan parameter 'text'." });
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/yousearch?text=${encodeURIComponent(text)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/yousearch?text=${encodeURIComponent(text)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "AI - wanzofc", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "AI - wanzofc bermasalah." });
@@ -445,12 +496,12 @@ router.get('/ai/wanzofc', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/anime/otakudesu/search', checkApiKey, async (req, res) => {
+router.get('/anime/otakudesu/search', checkApiKey, cache('1 hour'), async (req, res) => {
     const s = req.query.s;
     if (!s) return res.status(400).json({ result: false, message: "Tambahkan parameter 's'." });
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/anime/otakudesu/search?s=${encodeURIComponent(s)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/anime/otakudesu/search?s=${encodeURIComponent(s)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Anime - Otakudesu Search", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Anime - Otakudesu Search bermasalah." });
@@ -459,11 +510,11 @@ router.get('/anime/otakudesu/search', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/d/savefrom', checkApiKey, async (req, res) => {
+router.get('/d/savefrom', checkApiKey, cache('1 hour'), async (req, res) => {
     const url = req.query.url;
     if (!url) return res.status(400).json({ result: false, message: "Tambahkan parameter 'url'." });
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/d/savefrom?url=${encodeURIComponent(url)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/d/savefrom?url=${encodeURIComponent(url)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Downloader - SaveFrom", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Downloader - SaveFrom bermasalah." });
@@ -472,11 +523,11 @@ router.get('/d/savefrom', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/d/github', checkApiKey, async (req, res) => {
+router.get('/d/github', checkApiKey, cache('1 hour'), async (req, res) => {
     const url = req.query.url;
     if (!url) return res.status(400).json({ result: false, message: "Tambahkan parameter 'url'." });
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/d/github?url=${encodeURIComponent(url)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/d/github?url=${encodeURIComponent(url)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Downloader - GitHub Repository", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Downloader - GitHub Repository bermasalah." });
@@ -485,9 +536,9 @@ router.get('/d/github', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/info/jadwaltv', checkApiKey, async (req, res) => {
+router.get('/info/jadwaltv', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/info/jadwaltv`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/info/jadwaltv`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Informasi - Jadwal TV", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Informasi - Jadwal TV bermasalah." });
@@ -496,9 +547,9 @@ router.get('/info/jadwaltv', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/info/liburnasional', checkApiKey, async (req, res) => {
+router.get('/info/liburnasional', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/info/liburnasional`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/info/liburnasional`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Informasi - Hari Libur Nasional", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Informasi - Hari Libur Nasional bermasalah." });
@@ -507,9 +558,9 @@ router.get('/info/liburnasional', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/info/bmkg', checkApiKey, async (req, res) => {
+router.get('/info/bmkg', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/info/bmkg`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/info/bmkg`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Informasi - BMKG", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Informasi - BMKG bermasalah." });
@@ -518,9 +569,9 @@ router.get('/info/bmkg', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/info/cuaca', checkApiKey, async (req, res) => {
+router.get('/info/cuaca', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/info/cuaca`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/info/cuaca`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Informasi - Cuaca", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Informasi - Cuaca bermasalah." });
@@ -529,9 +580,9 @@ router.get('/info/cuaca', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/s/gitagram', checkApiKey, async (req, res) => {
+router.get('/s/gitagram', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/s/gitagram`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/s/gitagram`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Search - Gitagram", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Search - Gitagram bermasalah." });
@@ -540,9 +591,9 @@ router.get('/s/gitagram', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/s/duckduckgo', checkApiKey, async (req, res) => {
+router.get('/s/duckduckgo', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/s/duckduckgo`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/s/duckduckgo`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Search - DuckDuckGo", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Search - DuckDuckGo bermasalah." });
@@ -551,9 +602,9 @@ router.get('/s/duckduckgo', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/s/combot', checkApiKey, async (req, res) => {
+router.get('/s/combot', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/s/combot`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/s/combot`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Search - Combot", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Search - Combot bermasalah." });
@@ -562,9 +613,9 @@ router.get('/s/combot', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/s/bukalapak', checkApiKey, async (req, res) => {
+router.get('/s/bukalapak', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/s/bukalapak`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/s/bukalapak`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Search - Bukalapak", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Search - Bukalapak bermasalah." });
@@ -573,9 +624,9 @@ router.get('/s/bukalapak', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/s/brave', checkApiKey, async (req, res) => {
+router.get('/s/brave', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/s/brave`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/s/brave`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Search - Brave", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Search - Brave bermasalah." });
@@ -584,9 +635,9 @@ router.get('/s/brave', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/berita/kompas', checkApiKey, async (req, res) => {
+router.get('/berita/kompas', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/berita/kompas`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/berita/kompas`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Berita - Kompas", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Berita - Kompas bermasalah." });
@@ -595,9 +646,9 @@ router.get('/berita/kompas', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/berita/jkt48', checkApiKey, async (req, res) => {
+router.get('/berita/jkt48', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/berita/jkt48`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/berita/jkt48`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Berita - JKT48", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Berita - JKT48 bermasalah." });
@@ -606,9 +657,9 @@ router.get('/berita/jkt48', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/berita/cnn', checkApiKey, async (req, res) => {
+router.get('/berita/cnn', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/berita/cnn`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/berita/cnn`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Berita - CNN", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Berita - CNN bermasalah." });
@@ -617,9 +668,9 @@ router.get('/berita/cnn', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/berita/cnbcindonesia', checkApiKey, async (req, res) => {
+router.get('/berita/cnbcindonesia', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/berita/cnbcindonesia`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/berita/cnbcindonesia`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Berita - CNBC Indonesia", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Berita - CNBC Indonesia bermasalah." });
@@ -628,9 +679,9 @@ router.get('/berita/cnbcindonesia', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/berita/antara', checkApiKey, async (req, res) => {
+router.get('/berita/antara', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/berita/antara`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/berita/antara`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Berita - Antara", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Berita - Antara bermasalah." });
@@ -639,9 +690,9 @@ router.get('/berita/antara', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/berita/tribunnews', checkApiKey, async (req, res) => {
+router.get('/berita/tribunnews', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/berita/tribunnews`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/berita/tribunnews`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Berita - Tribunnews", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Berita - Tribunnews bermasalah." });
@@ -650,9 +701,9 @@ router.get('/berita/tribunnews', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/berita/suara', checkApiKey, async (req, res) => {
+router.get('/berita/suara', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/berita/suara`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/berita/suara`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Berita - Suara", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Berita - Suara bermasalah." });
@@ -661,9 +712,9 @@ router.get('/berita/suara', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/berita/merdeka', checkApiKey, async (req, res) => {
+router.get('/berita/merdeka', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/berita/merdeka`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/berita/merdeka`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Berita - Merdeka", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Berita - Merdeka bermasalah." });
@@ -672,9 +723,9 @@ router.get('/berita/merdeka', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/berita/sindonews', checkApiKey, async (req, res) => {
+router.get('/berita/sindonews', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/berita/sindonews`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/berita/sindonews`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Berita - Sindonews", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Berita - Sindonews bermasalah." });
@@ -683,9 +734,9 @@ router.get('/berita/sindonews', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/berita/liputan6', checkApiKey, async (req, res) => {
+router.get('/berita/liputan6', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/berita/liputan6`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/berita/liputan6`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Berita - Liputan6", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Berita - Liputan6 bermasalah." });
@@ -694,9 +745,9 @@ router.get('/berita/liputan6', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/apk/playstore', checkApiKey, async (req, res) => {
+router.get('/apk/playstore', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/apk/playstore`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/apk/playstore`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "APK - Play Store", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan data dari Play Store." });
@@ -705,9 +756,9 @@ router.get('/apk/playstore', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/apk/happymod', checkApiKey, async (req, res) => {
+router.get('/apk/happymod', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/apk/happymod`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/apk/happymod`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "APK - HappyMod", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan data dari HappyMod." });
@@ -716,9 +767,9 @@ router.get('/apk/happymod', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/apk/appstore', checkApiKey, async (req, res) => {
+router.get('/apk/appstore', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/apk/appstore`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/apk/appstore`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "APK - App Store", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan data dari App Store." });
@@ -727,9 +778,9 @@ router.get('/apk/appstore', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/apk/apkpure', checkApiKey, async (req, res) => {
+router.get('/apk/apkpure', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/apk/apkpure`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/apk/apkpure`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "APK - APKPure", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan data dari APKPure." });
@@ -738,9 +789,9 @@ router.get('/apk/apkpure', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/apk/apkmody', checkApiKey, async (req, res) => {
+router.get('/apk/apkmody', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/apk/apkmody`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/apk/apkmody`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "APK - APKMody", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan data dari APKMody." });
@@ -749,12 +800,12 @@ router.get('/apk/apkmody', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/tools/subdomains', checkApiKey, async (req, res) => {
+router.get('/tools/subdomains', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const domain = req.query.domain;
         if (!domain) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter domain!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/tools/subdomains?domain=${encodeURIComponent(domain)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/tools/subdomains?domain=${encodeURIComponent(domain)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: `Subdomain Scanner untuk ${domain}`, data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan data subdomain." });
@@ -763,12 +814,12 @@ router.get('/tools/subdomains', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/tools/text2base64', checkApiKey, async (req, res) => {
+router.get('/tools/text2base64', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const text = req.query.text;
         if (!text) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan teks untuk dikonversi!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/tools/text2base64?text=${encodeURIComponent(text)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/tools/text2base64?text=${encodeURIComponent(text)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Text to Base64", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengonversi teks ke Base64." });
@@ -777,12 +828,12 @@ router.get('/tools/text2base64', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/tools/text2qr', checkApiKey, async (req, res) => {
+router.get('/tools/text2qr', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const text = req.query.text;
         if (!text) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan teks untuk dikonversi!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/tools/text2qr?text=${encodeURIComponent(text)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/tools/text2qr?text=${encodeURIComponent(text)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Text to QR Code", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengonversi teks ke QR Code." });
@@ -791,13 +842,13 @@ router.get('/tools/text2qr', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/tools/translate', checkApiKey, async (req, res) => {
+router.get('/tools/translate', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const text = req.query.text;
-        const lang = req.query.lang || "en"; // Default English jika tidak ada parameter lang
+        const lang = req.query.lang || "en";
         if (!text) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan teks untuk diterjemahkan!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/tools/translate?text=${encodeURIComponent(text)}&lang=${lang}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/tools/translate?text=${encodeURIComponent(text)}&lang=${lang}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Text Translation", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal menerjemahkan teks." });
@@ -806,12 +857,12 @@ router.get('/tools/translate', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/lepton', checkApiKey, async (req, res) => {
+router.get('/ai/lepton', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const text = req.query.text;
         if (!text) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter text!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/lepton?text=${encodeURIComponent(text)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/lepton?text=${encodeURIComponent(text)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Lepton AI Response", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan respons dari Lepton AI." });
@@ -820,13 +871,13 @@ router.get('/ai/lepton', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/gpt3', checkApiKey, async (req, res) => {
+router.get('/ai/gpt3', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const prompt = req.query.prompt;
         const content = req.query.content;
         if (!prompt || !content) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter prompt dan content!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/gpt3?prompt=${encodeURIComponent(prompt)}&content=${encodeURIComponent(content)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/gpt3?prompt=${encodeURIComponent(prompt)}&content=${encodeURIComponent(content)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "GPT-3 AI Response", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan respons dari GPT-3 AI." });
@@ -835,9 +886,9 @@ router.get('/ai/gpt3', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/r/waifu', checkApiKey, async (req, res) => {
+router.get('/r/waifu', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get("https://api.siputzx.my.id/api/r/waifu");
+        const { data } = await axiosInstance.get("https://api.siputzx.my.id/api/r/waifu");
         res.json({ creator: "WANZOFC TECH", result: true, message: "Random Waifu Image", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan waifu random." });
@@ -846,12 +897,12 @@ router.get('/r/waifu', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/cf/sentiment', checkApiKey, async (req, res) => {
+router.get('/cf/sentiment', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const text = req.query.text;
         if (!text) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter text!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/cf/sentiment?text=${encodeURIComponent(text)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/cf/sentiment?text=${encodeURIComponent(text)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Sentiment Analysis Result", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan hasil analisis sentimen." });
@@ -860,12 +911,12 @@ router.get('/cf/sentiment', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/cf/image-classification', checkApiKey, async (req, res) => {
+router.get('/cf/image-classification', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const imageUrl = req.query.imageUrl;
         if (!imageUrl) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter imageUrl!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/cf/image-classification?imageUrl=${encodeURIComponent(imageUrl)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/cf/image-classification?imageUrl=${encodeURIComponent(imageUrl)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Image Classification Result", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengklasifikasikan gambar." });
@@ -874,12 +925,12 @@ router.get('/cf/image-classification', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/cf/embedding', checkApiKey, async (req, res) => {
+router.get('/cf/embedding', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const text = req.query.text;
         if (!text) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter text!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/cf/embedding?text=${encodeURIComponent(text)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/cf/embedding?text=${encodeURIComponent(text)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Text Embedding Result", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan embedding teks." });
@@ -888,13 +939,13 @@ router.get('/cf/embedding', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/cf/chat', checkApiKey, async (req, res) => {
+router.get('/cf/chat', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const prompt = req.query.prompt;
         const system = req.query.system;
         if (!prompt || !system) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter prompt dan system!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/cf/chat?prompt=${encodeURIComponent(prompt)}&system=${encodeURIComponent(system)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/cf/chat?prompt=${encodeURIComponent(prompt)}&system=${encodeURIComponent(system)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Cloudflare AI Chat Response", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan respons dari chatbot AI." });
@@ -903,13 +954,13 @@ router.get('/cf/chat', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/qwen257b', checkApiKey, async (req, res) => {
+router.get('/ai/qwen257b', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const prompt = req.query.prompt;
         const text = req.query.text;
         if (!prompt || !text) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter prompt dan text!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/qwen257b?prompt=${encodeURIComponent(prompt)}&text=${encodeURIComponent(text)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/qwen257b?prompt=${encodeURIComponent(prompt)}&text=${encodeURIComponent(text)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Qwen 257B AI Response", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan respons dari AI Qwen 257B." });
@@ -918,12 +969,12 @@ router.get('/ai/qwen257b', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/qwq-32b-preview', checkApiKey, async (req, res) => {
+router.get('/ai/qwq-32b-preview', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const content = req.query.content;
         if (!content) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter content!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/qwq-32b-preview?content=${encodeURIComponent(content)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/qwq-32b-preview?content=${encodeURIComponent(content)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "QWQ 32B AI Response", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan respons dari AI QWQ 32B." });
@@ -932,12 +983,12 @@ router.get('/ai/qwq-32b-preview', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/s/pinterest', checkApiKey, async (req, res) => {
+router.get('/s/pinterest', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const query = req.query.query;
         if (!query) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter query!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/s/pinterest?query=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/s/pinterest?query=${encodeURIComponent(query)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Hasil pencarian Pinterest", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan hasil dari Pinterest." });
@@ -946,12 +997,12 @@ router.get('/s/pinterest', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/s/soundcloud', checkApiKey, async (req, res) => {
+router.get('/s/soundcloud', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const query = req.query.query;
         if (!query) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter query!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/s/soundcloud?query=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/s/soundcloud?query=${encodeURIComponent(query)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Hasil pencarian SoundCloud", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan hasil dari SoundCloud." });
@@ -960,12 +1011,12 @@ router.get('/s/soundcloud', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/stalk/npm', checkApiKey, async (req, res) => {
+router.get('/stalk/npm', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const packageName = req.query.packageName;
         if (!packageName) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter packageName!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/stalk/npm?packageName=${encodeURIComponent(packageName)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/stalk/npm?packageName=${encodeURIComponent(packageName)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Informasi NPM Package", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan informasi dari NPM." });
@@ -974,12 +1025,12 @@ router.get('/stalk/npm', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/stabilityai', checkApiKey, async (req, res) => {
+router.get('/ai/stabilityai', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const prompt = req.query.prompt;
         if (!prompt) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter prompt!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/stabilityai?prompt=${encodeURIComponent(prompt)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/stabilityai?prompt=${encodeURIComponent(prompt)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Gambar dari Stability AI", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendapatkan gambar dari Stability AI." });
@@ -988,12 +1039,12 @@ router.get('/ai/stabilityai', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/s/wikipedia', checkApiKey, async (req, res) => {
+router.get('/s/wikipedia', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const query = req.query.query;
         if (!query) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter query!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/s/wikipedia?query=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/s/wikipedia?query=${encodeURIComponent(query)}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data Wikipedia." });
@@ -1002,12 +1053,12 @@ router.get('/s/wikipedia', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/s/spotify', checkApiKey, async (req, res) => {
+router.get('/s/spotify', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const query = req.query.query;
         if (!query) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter query!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/s/spotify?query=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/s/spotify?query=${encodeURIComponent(query)}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data Spotify." });
@@ -1016,12 +1067,12 @@ router.get('/s/spotify', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/tools/fake-data', checkApiKey, async (req, res) => {
+router.get('/tools/fake-data', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const type = req.query.type || "person";
         const count = req.query.count || 5;
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/tools/fake-data?type=${type}&count=${count}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/tools/fake-data?type=${type}&count=${count}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil fake data." });
@@ -1030,12 +1081,12 @@ router.get('/tools/fake-data', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/primbon/cek_potensi_penyakit', checkApiKey, async (req, res) => {
+router.get('/primbon/cek_potensi_penyakit', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const { tgl, bln, thn } = req.query;
         if (!tgl || !bln || !thn) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter tgl, bln, dan thn!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/primbon/cek_potensi_penyakit?tgl=${tgl}&bln=${bln}&thn=${thn}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/primbon/cek_potensi_penyakit?tgl=${tgl}&bln=${bln}&thn=${thn}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data Primbon Penyakit." });
@@ -1044,13 +1095,13 @@ router.get('/primbon/cek_potensi_penyakit', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/primbon/ramalanjodoh', checkApiKey, async (req, res) => {
+router.get('/primbon/ramalanjodoh', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const { nama1, tgl1, bln1, thn1, nama2, tgl2, bln2, thn2 } = req.query;
         if (!nama1 || !tgl1 || !bln1 || !thn1 || !nama2 || !tgl2 || !bln2 || !thn2)
             return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan semua parameter yang diperlukan!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/primbon/ramalanjodoh?nama1=${encodeURIComponent(nama1)}&tgl1=${tgl1}&bln1=${bln1}&thn1=${thn1}&nama2=${encodeURIComponent(nama2)}&tgl2=${tgl2}&bln2=${bln2}&thn2=${thn2}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/primbon/ramalanjodoh?nama1=${encodeURIComponent(nama1)}&tgl1=${tgl1}&bln1=${bln1}&thn1=${thn1}&nama2=${encodeURIComponent(nama2)}&tgl2=${tgl2}&bln2=${bln2}&thn2=${thn2}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data Ramalan Jodoh." });
@@ -1059,12 +1110,12 @@ router.get('/primbon/ramalanjodoh', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/primbon/rejeki_hoki_weton', checkApiKey, async (req, res) => {
+router.get('/primbon/rejeki_hoki_weton', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const { tgl, bln, thn } = req.query;
         if (!tgl || !bln || !thn) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter tgl, bln, dan thn!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/primbon/rejeki_hoki_weton?tgl=${tgl}&bln=${bln}&thn=${thn}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/primbon/rejeki_hoki_weton?tgl=${tgl}&bln=${bln}&thn=${thn}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data Rejeki Weton." });
@@ -1073,12 +1124,12 @@ router.get('/primbon/rejeki_hoki_weton', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/primbon/sifat_usaha_bisnis', checkApiKey, async (req, res) => {
+router.get('/primbon/sifat_usaha_bisnis', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const { tgl, bln, thn } = req.query;
         if (!tgl || !bln || !thn) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter tgl, bln, dan thn!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/primbon/sifat_usaha_bisnis?tgl=${tgl}&bln=${bln}&thn=${thn}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/primbon/sifat_usaha_bisnis?tgl=${tgl}&bln=${bln}&thn=${thn}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data Sifat Usaha." });
@@ -1087,12 +1138,12 @@ router.get('/primbon/sifat_usaha_bisnis', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/primbon/tafsirmimpi', checkApiKey, async (req, res) => {
+router.get('/primbon/tafsirmimpi', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const mimpi = req.query.mimpi;
         if (!mimpi) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter mimpi!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/primbon/tafsirmimpi?mimpi=${encodeURIComponent(mimpi)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/primbon/tafsirmimpi?mimpi=${encodeURIComponent(mimpi)}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data Tafsir Mimpi." });
@@ -1101,12 +1152,12 @@ router.get('/primbon/tafsirmimpi', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/primbon/artinama', checkApiKey, async (req, res) => {
+router.get('/primbon/artinama', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const nama = req.query.nama;
         if (!nama) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter nama!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/primbon/artinama?nama=${encodeURIComponent(nama)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/primbon/artinama?nama=${encodeURIComponent(nama)}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data Arti Nama." });
@@ -1115,12 +1166,12 @@ router.get('/primbon/artinama', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/primbon/kecocokan_nama_pasangan', checkApiKey, async (req, res) => {
+router.get('/primbon/kecocokan_nama_pasangan', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const { nama1, nama2 } = req.query;
         if (!nama1 || !nama2) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter nama1 dan nama2!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/primbon/kecocokan_nama_pasangan?nama1=${encodeURIComponent(nama1)}&nama2=${encodeURIComponent(nama2)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/primbon/kecocokan_nama_pasangan?nama1=${encodeURIComponent(nama1)}&nama2=${encodeURIComponent(nama2)}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data Kecocokan Nama Pasangan." });
@@ -1129,12 +1180,12 @@ router.get('/primbon/kecocokan_nama_pasangan', checkApiKey, async (req, res) => 
     }
 });
 
-router.get('/primbon/nomorhoki', checkApiKey, async (req, res) => {
+router.get('/primbon/nomorhoki', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const phoneNumber = req.query.phoneNumber;
         if (!phoneNumber) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter phoneNumber!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/primbon/nomorhoki?phoneNumber=${phoneNumber}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/primbon/nomorhoki?phoneNumber=${phoneNumber}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data Nomor Hoki." });
@@ -1143,12 +1194,12 @@ router.get('/primbon/nomorhoki', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/primbon/zodiak', checkApiKey, async (req, res) => {
+router.get('/primbon/zodiak', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const zodiak = req.query.zodiak;
         if (!zodiak) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter zodiak!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/primbon/zodiak?zodiak=${encodeURIComponent(zodiak)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/primbon/zodiak?zodiak=${encodeURIComponent(zodiak)}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data Zodiak." });
@@ -1157,47 +1208,44 @@ router.get('/primbon/zodiak', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/metaai', checkApiKey, async (req, res) => {
+router.get('/ai/metaai', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const { prompt, query } = req.query;
 
-        // Validasi parameter
         if (!prompt || !query) {
-            return res.status(400).json({ 
-                creator: "WANZOFC TECH", 
-                result: false, 
-                message: "Harap masukkan parameter prompt dan query!" 
+            return res.status(400).json({
+                creator: "WANZOFC TECH",
+                result: false,
+                message: "Harap masukkan parameter prompt dan query!"
             });
         }
 
-        // Kirim prompt dan query ke API eksternal
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/metaai`, {
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/metaai`, {
             params: {
-                prompt: prompt, // Contoh: "kamu adalah WANZOFC"
-                query: query     // Contoh: "halo"
+                prompt: prompt,
+                query: query
             }
         });
 
-        // Kirim respons ke client
         res.json(data);
     } catch (error) {
         console.error('Error fetching Meta AI data:', error);
-        res.status(500).json({ 
-            creator: "WANZOFC TECH", 
-            result: false, 
-            message: "Gagal mengambil data Meta AI." 
+        res.status(500).json({
+            creator: "WANZOFC TECH",
+            result: false,
+            message: "Gagal mengambil data Meta AI."
         });
     } finally {
         console.log('Meta AI request completed.');
     }
 });
 
-router.get('/ai/ustadz', checkApiKey, async (req, res) => {
+router.get('/ai/ustadz', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const query = req.query.query;
         if (!query) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter query!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/muslimai?query=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/muslimai?query=${encodeURIComponent(query)}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data USTADZ AI." });
@@ -1206,12 +1254,12 @@ router.get('/ai/ustadz', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/khodam', checkApiKey, async (req, res) => {
+router.get('/ai/khodam', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const content = req.query.content;
         if (!content) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter content!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/dukun?content=${encodeURIComponent(content)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/dukun?content=${encodeURIComponent(content)}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data Khodam AI." });
@@ -1220,11 +1268,11 @@ router.get('/ai/khodam', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/wanzofc-you', checkApiKey, async (req, res) => {
+router.get('/ai/wanzofc-you', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const q = req.query.q;
         if (!q) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter q!" });
-        const { data } = await axios.get(`https://api.neoxr.eu/api/you?q=${encodeURIComponent(q)}&apikey=PJaLJu`);
+        const { data } = await axiosInstance.get(`https://api.neoxr.eu/api/you?q=${encodeURIComponent(q)}&apikey=PJaLJu`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data dari wanzofc You." });
@@ -1233,11 +1281,11 @@ router.get('/ai/wanzofc-you', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/wanzofc-llama', checkApiKey, async (req, res) => {
+router.get('/ai/wanzofc-llama', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const q = req.query.q;
         if (!q) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter q!" });
-        const { data } = await axios.get(`https://api.neoxr.eu/api/llama?q=${encodeURIComponent(q)}&apikey=PJaLJu`);
+        const { data } = await axiosInstance.get(`https://api.neoxr.eu/api/llama?q=${encodeURIComponent(q)}&apikey=PJaLJu`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data dari wanzofc Llama." });
@@ -1246,12 +1294,12 @@ router.get('/ai/wanzofc-llama', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/meta-llama', checkApiKey, async (req, res) => {
+router.get('/ai/meta-llama', checkApiKey, cache('5 minutes'), async (req, res) => {
     try {
         const content = req.query.content;
         if (!content) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter content!" });
 
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/ai/meta-llama-33-70B-instruct-turbo?content=${encodeURIComponent(content)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/ai/meta-llama-33-70B-instruct-turbo?content=${encodeURIComponent(content)}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data dari Meta LLaMA." });
@@ -1260,12 +1308,12 @@ router.get('/ai/meta-llama', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/search/xnxx', checkApiKey, async (req, res) => {
+router.get('/search/xnxx', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const query = req.query.q;
         if (!query) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter q!" });
 
-        const { data } = await axios.get(`https://archive-ui.tanakadomp.biz.id/search/xnxx?q=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://archive-ui.tanakadomp.biz.id/search/xnxx?q=${encodeURIComponent(query)}`);
         res.json(data);
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data dari XNXX." });
@@ -1273,9 +1321,9 @@ router.get('/search/xnxx', checkApiKey, async (req, res) => {
         console.log('XNXX Search request completed.');
     }
 });
-router.get('/r/cecan/china', checkApiKey, async (req, res) => {
+router.get('/r/cecan/china', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get("https://api.siputzx.my.id/api/r/cecan/china");
+        const { data } = await axiosInstance.get("https://api.siputzx.my.id/api/r/cecan/china");
         res.json({ creator: "WANZOFC TECH", result: true, message: "Random Chinese Cecan Image", data: data });
     } catch (error) {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil gambar Cecan China." });
@@ -1284,12 +1332,12 @@ router.get('/r/cecan/china', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/d/spotify', checkApiKey, async (req, res) => {
+router.get('/d/spotify', checkApiKey, cache('1 hour'), async (req, res) => {
     const url = req.query.url;
     if (!url) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Tambahkan parameter 'url'." });
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/d/spotify?url=${encodeURIComponent(url)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/d/spotify?url=${encodeURIComponent(url)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Spotify Downloader", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Spotify Downloader bermasalah." });
@@ -1298,7 +1346,7 @@ router.get('/d/spotify', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/tools/ngl', checkApiKey, async (req, res) => {
+router.get('/tools/ngl', checkApiKey, cache('1 hour'), async (req, res) => {
     const link = req.query.link;
     const text = req.query.text;
 
@@ -1307,7 +1355,7 @@ router.get('/tools/ngl', checkApiKey, async (req, res) => {
     }
 
     try {
-        const { data } = await axios.get(`https://api.siputzx.my.id/api/tools/ngl?link=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`);
+        const { data } = await axiosInstance.get(`https://api.siputzx.my.id/api/tools/ngl?link=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "NGL Tool", data: data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "NGL Tool bermasalah." });
@@ -1316,74 +1364,69 @@ router.get('/tools/ngl', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/api/e/dana', checkApiKey, async (req, res) => {
+router.get('/api/e/dana', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        // Lakukan permintaan ke API eksternal menggunakan axios
-        const response = await axios.get('https://apis.xyrezz.online-server.biz.id/api/okeconnect/dana');
-
-        // Ambil data dari respons
+        const response = await axiosInstance.get('https://apis.xyrezz.online-server.biz.id/api/okeconnect/dana');
         const data = response.data;
-
-        // Kirim data yang diterima sebagai respons
-        res.json({ 
-            creator: "WANZOFC TECH", 
-            result: true, 
-            message: "Data dari API Dana berhasil diambil.", 
-            data: data 
+        res.json({
+            creator: "WANZOFC TECH",
+            result: true,
+            message: "Data dari API Dana berhasil diambil.",
+            data: data
         });
 
     } catch (error) {
         console.error("Terjadi kesalahan saat memanggil API Dana:", error);
-        res.status(500).json({ 
-            creator: "WANZOFC TECH", 
-            result: false, 
-            message: "Terjadi kesalahan server saat memanggil API Dana: " + error.message 
+        res.status(500).json({
+            creator: "WANZOFC TECH",
+            result: false,
+            message: "Terjadi kesalahan server saat memanggil API Dana: " + error.message
         });
     } finally {
         console.log('Permintaan ke API Dana selesai.');
     }
 });
-// Reddit Endpoints
-router.get('/s/reddit', checkApiKey, async (req, res) => {
+
+router.get('/s/reddit', checkApiKey, cache('1 hour'), async (req, res) => {
     const query = req.query.q;
     if (!query) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter q!" });
 
     try {
-        const { data } = await axios.get(`https://www.reddit.com/search.json?q=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://www.reddit.com/search.json?q=${encodeURIComponent(query)}`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Hasil pencarian Reddit", data: data });
     } catch (error) {
-        console.error("Reddit Search error:", error); // Log errornya
-        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data dari Reddit.", error: error.message }); // Tambahkan detail error
+        console.error("Reddit Search error:", error);
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data dari Reddit.", error: error.message });
     } finally {
         console.log('Reddit Search request completed.');
     }
 });
 
-router.get('/stalk/reddit', checkApiKey, async (req, res) => {
+router.get('/stalk/reddit', checkApiKey, cache('1 hour'), async (req, res) => {
     const username = req.query.username;
     if (!username) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter username!" });
 
     try {
-        const { data } = await axios.get(`https://www.reddit.com/user/${encodeURIComponent(username)}/submitted.json`);
+        const { data } = await axiosInstance.get(`https://www.reddit.com/user/${encodeURIComponent(username)}/submitted.json`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Reddit User Stalk", data: data });
     } catch (error) {
-        console.error("Reddit User Stalk error:", error); // Log errornya
-        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data dari Reddit User.", error: error.message }); // Tambahkan detail error
+        console.error("Reddit User Stalk error:", error);
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mengambil data dari Reddit User.", error: error.message });
     } finally {
         console.log('Reddit User Stalk request completed.');
     }
 });
 
-router.get('/d/reddit', checkApiKey, async (req, res) => {
+router.get('/d/reddit', checkApiKey, cache('1 hour'), async (req, res) => {
     const url = req.query.url;
     if (!url) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter url!" });
 
     try {
-        const { data } = await axios.get(`${url}.json`);
+        const { data } = await axiosInstance.get(`${url}.json`);
         res.json({ creator: "WANZOFC TECH", result: true, message: "Reddit Downloader", data: data });
     } catch (error) {
-        console.error("Reddit Downloader error:", error); // Log errornya
-        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendownload data dari Reddit.", error: error.message }); // Tambahkan detail error
+        console.error("Reddit Downloader error:", error);
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal mendownload data dari Reddit.", error: error.message });
     } finally {
         console.log('Reddit Downloader request completed.');
     }
@@ -1392,29 +1435,28 @@ router.get('/stalk/roblox', checkApiKey, async (req, res) => {
     const userId = req.query.userId;
 
     if (!userId) {
-        return res.status(400).json(formatResponse("WANZOFC TECH", false, "ID Pengguna Roblox diperlukan. Parameter 'userId' harus ditambahkan."));
+        return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "ID Pengguna Roblox diperlukan. Parameter 'userId' harus ditambahkan." });
     }
 
     try {
         const data = await robloxStalk(userId);
-        res.json(formatResponse("WANZOFC TECH", true, "Informasi Roblox Stalk", data));
+        res.json({ creator: "WANZOFC TECH", result: true, message: "Informasi Roblox Stalk", data: data });
     } catch (error) {
         console.error("Kesalahan saat melakukan Roblox Stalk:", error);
-        res.status(500).json(formatResponse("WANZOFC TECH", false, "Gagal melakukan Roblox Stalk. Coba lagi nanti."));
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal melakukan Roblox Stalk. Coba lagi nanti." });
     } finally {
         console.log(`Roblox Stalk selesai untuk userId: ${userId}`);
     }
 });
 
-// API Endpoints to Deactivate and Reactivate API Keys
 router.post('/deactivate-api', checkApiKey, async (req, res) => {
-    const { apikey } = req.query; // Get apikey from query parameter
+    const { apikey } = req.query;
     if (!apikey) {
         return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Parameter apikey diperlukan." });
     }
 
     try {
-        const result = await deactivateKey(apikey); // Use the deactivateKey function from db.js
+        const result = await deactivateKey(apikey);
         if (result) {
             return res.json({ creator: "WANZOFC TECH", result: true, message: "API key berhasil dinonaktifkan." });
         } else {
@@ -1427,13 +1469,13 @@ router.post('/deactivate-api', checkApiKey, async (req, res) => {
 });
 
 router.post('/reactivate-api', checkApiKey, async (req, res) => {
-    const { apikey } = req.query; // Get apikey from query parameter
+    const { apikey } = req.query;
     if (!apikey) {
         return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Parameter apikey diperlukan." });
     }
 
     try {
-        const result = await reactivateKey(apikey); // Use the reactivateKey function from db.js
+        const result = await reactivateKey(apikey);
         if (result) {
             return res.json({ creator: "WANZOFC TECH", result: true, message: "API key berhasil diaktifkan kembali." });
         } else {
@@ -1444,18 +1486,18 @@ router.post('/reactivate-api', checkApiKey, async (req, res) => {
         return res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Terjadi kesalahan server saat mengaktifkan kembali API key." });
     }
 });
-router.get('/kuis/islami/random', checkApiKey, async (req, res) => {
+router.get('/kuis/islami/random', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get('https://kuis-islami-api.vercel.app/api/random');
+        const { data } = await axiosInstance.get('https://kuis-islami-api.vercel.app/api/random');
         res.json({ creator: "WANZOFC TECH", result: true, data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: 'API Error' });
     }
 });
 
-router.get('/kuis/islami', checkApiKey, async (req, res) => {
+router.get('/kuis/islami', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
-        const { data } = await axios.get('https://kuis-islami-api.vercel.app/');
+        const { data } = await axiosInstance.get('https://kuis-islami-api.vercel.app/');
         res.json({ creator: "WANZOFC TECH", result: true, data });
     } catch {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: 'API Error' });
@@ -1463,12 +1505,12 @@ router.get('/kuis/islami', checkApiKey, async (req, res) => {
 });
 
 
-router.get('/ai/gpt4omini', checkApiKey, async (req, res) => {
+router.get('/ai/gpt4omini', checkApiKey, cache('5 minutes'), async (req, res) => {
     const query = req.query.q;
     if (!query) return res.status(400).json({ message: 'Query parameter (q) is required' });
 
     try {
-        const { data } = await axios.get(`https://vapis.my.id/api/gpt4omini?q=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://vapis.my.id/api/gpt4omini?q=${encodeURIComponent(query)}`);
         res.json({ creator: "WANZOFC TECH", result: true, data });
     } catch (error) {
         console.error(error);
@@ -1476,12 +1518,12 @@ router.get('/ai/gpt4omini', checkApiKey, async (req, res) => {
     }
 });
 
-router.get('/ai/gpt4o', checkApiKey, async (req, res) => {
+router.get('/ai/gpt4o', checkApiKey, cache('5 minutes'), async (req, res) => {
     const query = req.query.q;
     if (!query) return res.status(400).json({ message: 'Query parameter (q) is required' });
 
     try {
-        const { data } = await axios.get(`https://vapis.my.id/api/gpt4o?q=${encodeURIComponent(query)}`);
+        const { data } = await axiosInstance.get(`https://vapis.my.id/api/gpt4o?q=${encodeURIComponent(query)}`);
         res.json({ creator: "WANZOFC TECH", result: true, data });
     } catch (error) {
         console.error(error);
