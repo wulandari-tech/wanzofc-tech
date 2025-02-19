@@ -23,6 +23,7 @@
   "homepage": "https://github.com/fawwaz37/nodejs-restapi",
   "license": "ISC",
   "dependencies": {
+     "apicache": "^1.6.3",
     "axios": "^0.21.1",
     "connect-flash": "^0.1.1",
     "cookie-parser": "^1.4.5",
