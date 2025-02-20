@@ -4,11 +4,19 @@
     { "src": "app.js", "use": "@vercel/node" },
     { "src": "public/**", "use": "@vercel/static" },
     { "src": "views/**", "use": "@vercel/static" },
-    { "src": "404.html", "use": "@vercel/static" }
+    { "src": "lib/**", "use": "@vercel/static" },
+    { "src": "404.html", "use": "@vercel/static" },
+    { "src": ".gitignore", "use": "@vercel/static" },
+    { "src": ".slugignore", "use": "@vercel/static" },
+    { "src": "Procfile", "use": "@vercel/static" },
+    { "src": "README.md", "use": "@vercel/static" },
+    { "src": "ai.js", "use": "@vercel/static" },
+    { "src": "package.json", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/public/(.*)", "dest": "/public/$1" },
     { "src": "/views/(.*)", "dest": "/views/$1" },
+    { "src": "/lib/(.*)", "dest": "/lib/$1" },
     { "src": "/api/(.*)", "dest": "app.js" },
     { "src": "/404", "dest": "/404.html" },
     { "handle": "filesystem" },
