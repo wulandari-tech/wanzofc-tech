@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "app.js", "use": "@vercel/node" },
+    { "src": "public/**", "use": "@vercel/static" },
+    { "src": "*.html", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/public/(.*)", "dest": "/public/$1" },
+    { "src": "/api/(.*)", "dest": "app.js" },
+    { "src": "/404", "dest": "/404.html" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "app.js" }
+  ]
+}
