@@ -1562,5 +1562,23 @@ router.get('/ai/gpt4o', checkApiKey, cache('5 minutes'), async (req, res) => {
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: 'API Error' });
     }
 });
+router.get('/m/brat', checkApiKey, cache('5 minutes'), async (req, res) => {
+    const { text, isVideo, delay } = req.query;
+    if (!text) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Harap masukkan parameter text!" });
 
+    try {
+        const url = `https://api.siputzx.my.id/api/m/brat?text=${encodeURIComponent(text)}&isVideo=${isVideo || false}&delay=${delay || 500}`;
+        const response = await axiosInstance.get(url, { responseType: 'arraybuffer' });  // Ambil sebagai arraybuffer
+        const imageBuffer = Buffer.from(response.data, 'binary');   // Konversi ke Buffer
+
+        res.setHeader('Content-Type', 'image/gif'); // Asumsikan GIF.  Ubah sesuai KEBUTUHAN!
+        res.send(imageBuffer);
+
+    } catch (error) {
+        console.error("Error in /m/brat:", error);
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal memproses permintaan /m/brat." });
+    } finally {
+        console.log('/m/brat request completed.');
+    }
+});
 module.exports = router;
