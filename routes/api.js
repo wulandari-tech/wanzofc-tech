@@ -1849,16 +1849,16 @@ router.get('/ai/gpt4omini', checkApiKey, cache('5 minutes'), async (req, res) =>
 });
 router.get('/ai/animetts', checkApiKey, async (req, res) => {
     const q = req.query.q;
-    const character = req.query.character || "èƒ¡æ¡ƒ Hu Tao (Genshin Impact)"; // Nilai default
+    const character = req.query.character || "胡桃 Hu Tao (Genshin Impact)"; // Nilai default
     const speed = parseFloat(req.query.speed) || 1; // Kecepatan default, pastikan numerik
     const phenome = req.query.phenome === 'true'; // Default false, konversi string ke boolean
 
     if (!q) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Tambahkan parameter 'q' (teks yang akan diubah jadi suara)." });
 
     try {
-        const result = await AnimeTTS(q, character, "Indonesia", speed, phenome); // Ubah English jadi Indonesia
+        const result = await AnimeTTS(q, character, "English", speed, phenome); // Tetapkan bahasa ke English
         if (!result?.output?.data) {
-            return res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal memproses teks menjadi suara. Kemungkinan karakter tidak support bahasa Indonesia atau server bermasalah." });
+            return res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal memproses teks menjadi suara. Kemungkinan karakter atau server bermasalah." });
         }
         const audioUrl = 'https://plachta-vits-umamusume-voice-synthesizer.hf.space/file=' + result.output.data[1].name;
         res.json({ creator: "WANZOFC TECH", result: true, message: "Anime TTS", data: { audioUrl } });
