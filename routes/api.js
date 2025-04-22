@@ -146,6 +146,35 @@ const setCacheWithRedis = async (req, res, next) => {
 }
 
 let dataWilayah = null;
+const fetchDataWilayah = async () => {
+    const url = "https://raw.githubusercontent.com/kodewilayah/permendagri-72-2019/main/dist/base.csv";
+    try {
+        const response = await axios.get(url);
+        dataWilayah = response.data.split("\n").map(line => {
+            const [kode, nama] = line.split(",")
+            return { kode: kode.trim(), nama: nama?.trim() };
+        });
+        console.log("Data wilayah berhasil di-fetch.");
+    } catch (error) {
+        console.error("Gagal fetch data wilayah:", error);
+    }
+};
+const searchWilayah = async (query) => {
+    if (!dataWilayah) {
+        console.log("Data wilayah belum ada, fetching...");
+        try {
+            await fetchDataWilayah();
+        } catch (error) {
+            console.error("Gagal initial fetch data wilayah:", error);
+        }
+    }
+    const queryWords = query.toLowerCase().split(" ");
+    return dataWilayah.filter(item => {
+        const searchString = `${item.kode} ${item.nama}`.toLowerCase();
+        return queryWords.every(word => searchString.includes(word));
+    });
+};
+
 
 // Fungsi untuk fetch data wilayah (hanya dipanggil jika data belum ada)
 const fetchDataWilayah = async () => {
@@ -1582,7 +1611,42 @@ router.get('/kuis/islami', checkApiKey, cache('1 hour'), async (req, res) => {
     }
 });
 
+router.get('/wilayah/cuaca', checkApiKey, cache('1 hour'), async (req, res) => {
+    const q = req.query.q;
+    if (!q) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Tambahkan parameter 'q'." });
 
+    try {
+        const results = await searchWilayah(q);
+
+        // Filter hasil pencarian berdasarkan kode wilayah (panjang kode = 4)
+        const filteredResults = results.filter(result => result.kode.split('.').length === 4);
+
+        if (filteredResults.length === 0) {
+            return res.status(404).json({ creator: "WANZOFC TECH", result: false, message: "Wilayah tidak ditemukan atau tidak memiliki informasi cuaca." });
+        }
+
+        // Ambil data cuaca untuk setiap wilayah yang ditemukan
+        const cuacaPromises = filteredResults.map(async result => {
+            try {
+                const { data } = await axios.get(`https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=${result.kode}`);
+                return { nama: result.nama, cuaca: data };
+            } catch (error) {
+                console.error(`Gagal mengambil data cuaca untuk ${result.nama}:`, error);
+                return { nama: result.nama, cuaca: "Data cuaca tidak tersedia." };
+            }
+        });
+
+        const dataCuaca = await Promise.all(cuacaPromises);
+
+        res.json({ creator: "WANZOFC TECH", result: true, message: "Prakiraan cuaca wilayah", data: dataCuaca });
+
+    } catch (error) {
+        console.error("Error di endpoint /wilayah/cuaca:", error);
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Terjadi kesalahan server saat mencari cuaca wilayah." });
+    } finally {
+        console.log('/wilayah/cuaca request completed.');
+    }
+});
 router.get('/ai/gpt4omini', checkApiKey, cache('5 minutes'), async (req, res) => {
     const query = req.query.q;
     if (!query) return res.status(400).json({ message: 'Query parameter (q) is required' });
