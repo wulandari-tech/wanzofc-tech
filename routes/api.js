@@ -145,6 +145,40 @@ const setCacheWithRedis = async (req, res, next) => {
     }
 }
 
+let dataWilayah = null;
+
+// Fungsi untuk fetch data wilayah (hanya dipanggil jika data belum ada)
+const fetchDataWilayah = async () => {
+    const url = "https://raw.githubusercontent.com/kodewilayah/permendagri-72-2019/main/dist/base.csv";
+    try {
+        const response = await axios.get(url);
+        dataWilayah = response.data.split("\n").map(line => {
+            const [kode, nama] = line.split(",")
+            return { kode: kode.trim(), nama: nama?.trim() };
+        });
+        console.log("Data wilayah berhasil di-fetch.");
+    } catch (error) {
+        console.error("Gagal fetch data wilayah:", error);
+    }
+};
+
+// Fungsi pencarian wilayah
+const searchWilayah = async (query) => {
+    if (!dataWilayah) {
+        console.log("Data wilayah belum ada, fetching...");
+        try {
+            await fetchDataWilayah();
+        } catch (error) {
+            console.error("Gagal initial fetch data wilayah:", error);
+        }
+    }
+
+    const queryWords = query.toLowerCase().split(" ");
+    return dataWilayah.filter(item => {
+        const searchString = `${item.kode} ${item.nama}`.toLowerCase();
+        return queryWords.every(word => searchString.includes(word));
+    });
+};
 router.get("/kebijakan", (req, res) => {
     res.sendFile(path.join(__dirname, "kebijakan.html"));
 });
@@ -1526,7 +1560,19 @@ router.get('/kuis/islami/random', checkApiKey, cache('1 hour'), async (req, res)
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: 'API Error' });
     }
 });
+router.get('/wilayah/search', checkApiKey, cache('1 hour'), async (req, res) => {
+    const q = req.query.q;
+    if (!q) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Tambahkan parameter 'q'." });
 
+    try {
+        const results = await searchWilayah(q);
+        res.json({ creator: "WANZOFC TECH", result: true, message: "Pencarian wilayah", data: results });
+    } catch {
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Pencarian wilayah bermasalah." });
+    } finally {
+        console.log('/wilayah/search request completed.');
+    }
+});
 router.get('/kuis/islami', checkApiKey, cache('1 hour'), async (req, res) => {
     try {
         const { data } = await axiosInstance.get('https://kuis-islami-api.vercel.app/');
