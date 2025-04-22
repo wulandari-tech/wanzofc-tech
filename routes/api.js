@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
+const WebSocket = require('ws');
 const path = require('path');
 const cloudscraper = require('cloudscraper');
 const { cekKey, updateKeyExpiry, deactivateKey, reactivateKey } = require('../database/db');
@@ -13,16 +14,12 @@ const apicache = require('apicache');
 const http = require('http');
 const https = require('https');
 require('dotenv').config();
-
 const router = express.Router();
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
-
 const formatParagraph = (text) => text ? text.replace(/\.\s+/g, ".\n\n") : "Tidak ada jawaban.";
-
 const checkApiKey = async (req, res, next) => {
     const apikey = req.query.apikey;
-
     if (!apikey) {
         return res.status(400).json({ status: 400, message: 'Parameter apikey is required!' });
     }
@@ -176,38 +173,229 @@ const searchWilayah = async (query) => {
 };
 
 
-// Fungsi untuk fetch data wilayah (hanya dipanggil jika data belum ada)
-const fetchDataWilayah = async () => {
-    const url = "https://raw.githubusercontent.com/kodewilayah/permendagri-72-2019/main/dist/base.csv";
-    try {
-        const response = await axios.get(url);
-        dataWilayah = response.data.split("\n").map(line => {
-            const [kode, nama] = line.split(",")
-            return { kode: kode.trim(), nama: nama?.trim() };
+const languages = [
+    "æ—¥æœ¬èªž",
+    "ç®€ä½“ä¸­æ–‡",
+    "English",
+    "Mix",
+    "Indonesia" // Tambahkan bahasa Indonesia
+];
+
+const characters = [
+    "ç‰¹åˆ«å‘¨ Special Week (Umamusume Pretty Derby)",
+    "æ— å£°é“ƒé¹¿ Silence Suzuka (Umamusume Pretty Derby)",
+    "ä¸œæµ·å¸çŽ‹ Tokai Teio (Umamusume Pretty Derby)",
+    "ä¸¸å–„æ–¯åŸº Maruzensky (Umamusume Pretty Derby)",
+    "å¯Œå£«å¥‡è¿¹ Fuji Kiseki (Umamusume Pretty Derby)",
+    "å°æ —å¸½ Oguri Cap (Umamusume Pretty Derby)",
+    "é»„é‡‘èˆ¹ Gold Ship (Umamusume Pretty Derby)",
+    "ä¼ç‰¹åŠ  Vodka (Umamusume Pretty Derby)",
+    "å¤§å’Œèµ¤éª¥ Daiwa Scarlet (Umamusume Pretty Derby)",
+    "å¤§æ ‘å¿«è½¦ Taiki Shuttle (Umamusume Pretty Derby)",
+    "è‰ä¸Šé£ž Grass Wonder (Umamusume Pretty Derby)",
+    "è±äºšé©¬é€Š Hishi Amazon (Umamusume Pretty Derby)",
+    "ç›®ç™½éº¦æ˜† Mejiro Mcqueen (Umamusume Pretty Derby)",
+    "ç¥žé¹° El Condor Pasa (Umamusume Pretty Derby)",
+    "å¥½æ­Œå‰§ T.M. Opera O (Umamusume Pretty Derby)",
+    "æˆç”°ç™½ä» Narita Brian (Umamusume Pretty Derby)",
+    "é²é“å¤«è±¡å¾ Symboli Rudolf (Umamusume Pretty Derby)",
+    "æ°”æ§½ Air Groove (Umamusume Pretty Derby)",
+    "çˆ±ä¸½æ•°ç  Agnes Digital (Umamusume Pretty Derby)",
+    "é’äº‘å¤©ç©º Seiun Sky (Umamusume Pretty Derby)",
+    "çŽ‰è—»åå­— Tamamo Cross (Umamusume Pretty Derby)",
+    "ç¾Žå¦™å§¿åŠ¿ Fine Motion (Umamusume Pretty Derby)",
+    "çµç¶æ™¨å…‰ Biwa Hayahide (Umamusume Pretty Derby)",
+    "é‡ç‚® Mayano Topgun (Umamusume Pretty Derby)",
+    "æ›¼åŸŽèŒ¶åº§ Manhattan Cafe (Umamusume Pretty Derby)",
+    "ç¾Žæ™®æ³¢æ— Mihono Bourbon (Umamusume Pretty Derby)",
+    "ç›®ç™½é›·æ© Mejiro Ryan (Umamusume Pretty Derby)",
+    "é›ªä¹‹ç¾Žäºº Yukino Bijin (Umamusume Pretty Derby)",
+    "ç±³æµ´ Rice Shower (Umamusume Pretty Derby)",
+    "è‰¾å°¼æ–¯é£Žç¥ž Ines Fujin (Umamusume Pretty Derby)",
+    "çˆ±ä¸½é€Ÿå­ Agnes Tachyon (Umamusume Pretty Derby)",
+    "çˆ±æ…•ç»‡å§¬ Admire Vega (Umamusume Pretty Derby)",
+    "ç¨»è·ä¸€ Inari One (Inari One)",
+    "èƒœåˆ©å¥–åˆ¸ Winning Ticket (Umamusume Pretty Derby)",
+    "ç©ºä¸­ç¥žå®« Air Shakur (Umamusume Pretty Derby)",
+    "è£è¿›é—ªè€€ Eishin Flash (Umamusume Pretty Derby)",
+    "çœŸæœºä¼¶ Curren Chan (Umamusume Pretty Derby)",
+    "å·ä¸Šå…¬ä¸» Kawakami Princess (Umamusume Pretty Derby)",
+    "é»„é‡‘åŸŽå¸‚ Gold City (Umamusume Pretty Derby)",
+    "æ¨±èŠ±è¿›çŽ‹ Sakura Bakushin O (Umamusume Pretty Derby)",
+    "é‡‡ç  Seeking the Pearl (Umamusume Pretty Derby)",
+    "æ–°å…‰é£Ž Shinko Windy (Umamusume Pretty Derby)",
+    "ä¸œå•†å˜é© Sweep Tosho (Umamusume Pretty Derby)",
+    "è¶…çº§å°æºª Super Creek (Umamusume Pretty Derby)",
+    "é†’ç›®é£žé¹° Smart Falcon (Umamusume Pretty Derby)",
+    "è’æ¼ è‹±é›„ Zenno Rob Roy (Umamusume Pretty Derby)",
+    "ä¸œç€›ä½æ•¦ Tosen Jordan (Umamusume Pretty Derby)",
+    "ä¸­å±±åº†å…¸ Nakayama Festa (Umamusume Pretty Derby)",
+    "æˆç”°å¤§è¿› Narita Taishin (Umamusume Pretty Derby)",
+    "è¥¿é‡ŽèŠ± Nishino Flower (Umamusume Pretty Derby)",
+    "æ˜¥ä¹Œæ‹‰æ‹‰ Haru Urara (Umamusume Pretty Derby)",
+    "é’ç«¹å›žå¿† Bamboo Memory (Umamusume Pretty Derby)",
+    "å¾…å…¼ç¦æ¥ Matikane Fukukitaru (Umamusume Pretty Derby)",
+    "åå°†æ€’æ¶› Meisho Doto (Umamusume Pretty Derby)",
+    "ç›®ç™½å¤šä¼¯ Mejiro Dober (Umamusume Pretty Derby)",
+    "ä¼˜ç§€ç´ è´¨ Nice Nature (Umamusume Pretty Derby)",
+    "å¸çŽ‹å…‰çŽ¯ King Halo (Umamusume Pretty Derby)",
+    "å¾…å…¼è¯—æ­Œå‰§ Matikane Tannhauser (Umamusume Pretty Derby)",
+    "ç”Ÿé‡Žç‹„æœæ–¯ Ikuno Dictus (Umamusume Pretty Derby)",
+    "ç›®ç™½å–„ä¿¡ Mejiro Palmer (Umamusume Pretty Derby)",
+    "å¤§æ‹“å¤ªé˜³ç¥ž Daitaku Helios (Umamusume Pretty Derby)",
+    "åŒæ¶¡è½® Twin Turbo (Umamusume Pretty Derby)",
+    "é‡Œè§å…‰é’» Satono Diamond (Umamusume Pretty Derby)",
+    "åŒ—éƒ¨çŽ„é©¹ Kitasan Black (Umamusume Pretty Derby)",
+    "æ¨±èŠ±åƒä»£çŽ‹ Sakura Chiyono O (Umamusume Pretty Derby)",
+    "å¤©ç‹¼æ˜Ÿè±¡å¾ Sirius Symboli (Umamusume Pretty Derby)",
+    "ç›®ç™½é˜¿å°”ä¸¹ Mejiro Ardan (Umamusume Pretty Derby)",
+    "å…«é‡æ— æ•Œ Yaeno Muteki (Umamusume Pretty Derby)",
+    "é¹¤ä¸¸åˆšå¿— Tsurumaru Tsuyoshi (Umamusume Pretty Derby)",
+    "ç›®ç™½å…‰æ˜Ž Mejiro Bright (Umamusume Pretty Derby)",
+    "æ¨±èŠ±æ¡‚å†  Sakura Laurel (Sakura Laurel)",
+    "æˆç”°è·¯ Narita Top Road (Narita Top Road)",
+    "ä¹Ÿæ–‡æ‘„è¾‰ Yamanin Zephyr (Yamanin Zephyr)",
+    "çœŸå¼“å¿«è½¦ Aston Machan (Aston Machan)",
+    "éªå·æ‰‹çº² Hayakawa Tazuna (Hayakawa Tazuna)",
+    "å°æž—åŽ†å¥‡ Kopano Rickey (Kopano Rickey)",
+    "å¥‡é”éª Wonder Acute (Wonder Acute)",
+    "ç§‹å·ç†äº‹é•¿ President Akikawa (President Akikawa)",
+    "ç¶¾åœ° å¯§ã€… Ayachi Nene (Ayachi Nene)",
+    "å› å¹¡ ã‚ãã‚‹ Inaba Meguru (Inaba Meguru)",
+    "æ¤Žè‘‰ ç´¬ Shiiba Tsumugi (Shiiba Tsumugi)",
+    "ä»®å±‹ å’Œå¥ Kariya Wakama (Kariya Wakama)",
+    "æˆ¸éš  æ†§å­ Togakushi Touko (Togakushi Touko)",
+    "ä¹æ¡è£Ÿç½— Kujou Sara (Genshin Impact)",
+    "èŠ­èŠ­æ‹‰ Barbara (Genshin Impact)",
+    "æ´¾è’™ Paimon (Genshin Impact)",
+    "è’æ³·ä¸€æ–— Arataki Itto (Genshin Impact)",
+    "æ—©æŸš Sayu (Genshin Impact)",
+    "é¦™è± Xiangling (Genshin Impact)",
+    "ç¥žé‡Œç»«åŽ Kamisato Ayaka (Genshin Impact)",
+    "é‡äº‘ Chongyun (Genshin Impact)",
+    "æµæµªè€… Wanderer (Wanderer)",
+    "ä¼˜èˆ Eula (Eula)",
+    "å‡å…‰ Ningguang (Ningguang)",
+    "é’Ÿç¦» Zhongli (Zhongli)",
+    "é›·ç”µå°†å†› Raiden Shogun (Raiden Shogun)",
+    "æž«åŽŸä¸‡å¶ Kaedehara Kazuha (Kaedehara Kazuha)",
+    "èµ›è¯º Cyno (Cyno)",
+    "è¯ºè‰¾å°” Noelle (Noelle)",
+    "å…«é‡ç¥žå­ Yae Miko (Yae Miko)",
+    "å‡¯äºš Kaeya (Kaeya)",
+    "é­ˆ Xiao (Xiao)",
+    "æ‰˜é©¬ Thoma (Thoma)",
+    "å¯èŽ‰ Klee (Klee)",
+    "è¿ªå¢å…‹ Diluc (Diluc)",
+    "å¤œå…° Yelan (Yelan)",
+    "é¹¿é‡Žé™¢å¹³è— Shikanoin Heizou (Shikanoin Heizou)",
+    "è¾›ç„± Xinyan (Xinyan)",
+    "ä¸½èŽŽ Lisa (Lisa)",
+    "äº‘å ‡ Yun Jin (Yun Jin)",
+    "åŽè’‚ä¸ Candace (Candace)",
+    "ç½—èŽŽèŽ‰äºš Rosaria (Rosaria)",
+    "åŒ—æ–— Beidou (Beidou)",
+    "çŠç‘šå®«å¿ƒæµ· Sangonomiya Kokomi (Sangonomiya Kokomi)",
+    "çƒŸç»¯ Yanfei (Yanfei)",
+    "ä¹…å²å¿ Kuki Shinobu (Kuki Shinobu)",
+    "å®µå®« Yoimiya (Yoimiya)",
+    "å®‰æŸ Amber (Amber)",
+    "è¿ªå¥¥å¨œ Diona (Diona)",
+    "ç­å°¼ç‰¹ Bennett (Bennett)",
+    "é›·æ³½ Razor (Razor)",
+    "é˜¿è´å¤š Albedo (Albedo)",
+    "æ¸©è¿ª Venti (Venti)",
+    "ç©º Player Male (Player Male)",
+    "ç¥žé‡Œç»«äºº Kamisato Ayato (Kamisato Ayato)",
+    "ç´ Jean (Jean)",
+    "è‰¾å°”æµ·æ£® Alhaitham (Alhaitham)",
+    "èŽ«å¨œ Mona (Mona)",
+    "å¦®éœ² Nilou (Nilou)",
+    "èƒ¡æ¡ƒ Hu Tao (Hu Tao)",
+    "ç”˜é›¨ Ganyu (Ganyu)",
+    "çº³è¥¿å¦² Nahida (Nahida)",
+    "åˆ»æ™´ Keqing (Keqing)",
+    "è§ Player Female (Player Female)",
+    "åŸƒæ´›ä¼Š Aloy (Aloy)",
+    "æŸ¯èŽ± Collei (Collei)",
+    "å¤šèŽ‰ Dori (Dori)",
+    "æçº³é‡Œ Tighnari (Tighnari)",
+    "ç ‚ç³– Sucrose (Sucrose)",
+    "è¡Œç§‹ Xingqiu (Xingqiu)",
+    "å¥¥å…¹ Oz (Oz)",
+    "äº”éƒŽ Gorou (Gorou)",
+    "è¾¾è¾¾åˆ©äºš Tartaglia (Tartaglia)",
+    "ä¸ƒä¸ƒ Qiqi (Qiqi)",
+    "ç”³é¹¤ Shenhe (Shenhe)",
+    "èŽ±ä¾æ‹‰ Layla (Layla)",
+    "è²è°¢å°” Fischl (Fischl)"
+];
+
+function generateSessionHash(length = 10) {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+async function AnimeTTS(teks, model, lang, speed, phenome) {
+    return new Promise((resolve, reject) => {
+        const ws = new WebSocket('wss://plachta-vits-umamusume-voice-synthesizer.hf.space/queue/join');
+        const sessionHash = generateSessionHash();
+
+        ws.on('open', function open() {
+            console.log('Connected to WebSocket');
+
+            const firstMessage = {
+                session_hash: sessionHash,
+                fn_index: 2
+            };
+            ws.send(JSON.stringify(firstMessage));
+            console.log('Sent first message:', firstMessage);
+
+            const secondMessage = {
+                fn_index: 2,
+                data: [
+                    teks || "Hey how are you! Im here! hey, what is this?",
+                    model || "èƒ¡æ¡ƒ Hu Tao (Genshin Impact)",
+                    lang || "English",
+                    speed || 1,
+                    phenome || true
+                ],
+                session_hash: sessionHash
+            };
+            ws.send(JSON.stringify(secondMessage));
+            console.log('Sent second message:', secondMessage);
         });
-        console.log("Data wilayah berhasil di-fetch.");
-    } catch (error) {
-        console.error("Gagal fetch data wilayah:", error);
-    }
-};
 
-// Fungsi pencarian wilayah
-const searchWilayah = async (query) => {
-    if (!dataWilayah) {
-        console.log("Data wilayah belum ada, fetching...");
-        try {
-            await fetchDataWilayah();
-        } catch (error) {
-            console.error("Gagal initial fetch data wilayah:", error);
-        }
-    }
+        ws.on('message', function message(data) {
+            console.log('Received from server:', data.toString());
 
-    const queryWords = query.toLowerCase().split(" ");
-    return dataWilayah.filter(item => {
-        const searchString = `${item.kode} ${item.nama}`.toLowerCase();
-        return queryWords.every(word => searchString.includes(word));
+            try {
+                const receivedObj = JSON.parse(data);
+
+                if (receivedObj.msg === 'process_completed') {
+                    console.log('Process completed:', receivedObj);
+                    ws.close();
+                    resolve(receivedObj);
+                }
+            } catch (e) {
+                console.log('Received non-JSON data:', data.toString());
+            }
+        });
+
+        ws.on('error', function error(err) {
+            console.error('WebSocket error:', err);
+            reject(err);
+        });
+
+        ws.on('close', function close() {
+            console.log('WebSocket connection closed');
+        });
     });
-};
+}
 router.get("/kebijakan", (req, res) => {
     res.sendFile(path.join(__dirname, "kebijakan.html"));
 });
@@ -1659,7 +1847,28 @@ router.get('/ai/gpt4omini', checkApiKey, cache('5 minutes'), async (req, res) =>
         res.status(500).json({ creator: "WANZOFC TECH", result: false, message: 'API Error' });
     }
 });
+router.get('/ai/animetts', checkApiKey, async (req, res) => {
+    const q = req.query.q;
+    const character = req.query.character || "èƒ¡æ¡ƒ Hu Tao (Genshin Impact)"; // Nilai default
+    const speed = parseFloat(req.query.speed) || 1; // Kecepatan default, pastikan numerik
+    const phenome = req.query.phenome === 'true'; // Default false, konversi string ke boolean
 
+    if (!q) return res.status(400).json({ creator: "WANZOFC TECH", result: false, message: "Tambahkan parameter 'q' (teks yang akan diubah jadi suara)." });
+
+    try {
+        const result = await AnimeTTS(q, character, "Indonesia", speed, phenome); // Ubah English jadi Indonesia
+        if (!result?.output?.data) {
+            return res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Gagal memproses teks menjadi suara. Kemungkinan karakter tidak support bahasa Indonesia atau server bermasalah." });
+        }
+        const audioUrl = 'https://plachta-vits-umamusume-voice-synthesizer.hf.space/file=' + result.output.data[1].name;
+        res.json({ creator: "WANZOFC TECH", result: true, message: "Anime TTS", data: { audioUrl } });
+    } catch (error) {
+        console.error("Error di endpoint /ai/animetts:", error);
+        res.status(500).json({ creator: "WANZOFC TECH", result: false, message: "Terjadi kesalahan server saat memproses teks menjadi suara." });
+    } finally {
+        console.log('/ai/animetts request completed.');
+    }
+});
 router.get('/ai/gpt4o', checkApiKey, cache('5 minutes'), async (req, res) => {
     const query = req.query.q;
     if (!query) return res.status(400).json({ message: 'Query parameter (q) is required' });
